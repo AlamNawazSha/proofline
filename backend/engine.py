@@ -9,7 +9,7 @@ Design rules:
 """
 
 from __future__ import annotations
-import copy, difflib, hashlib, json, re, uuid
+import copy, difflib, functools, hashlib, json, re, uuid
 from datetime import datetime, timezone, date
 
 
@@ -209,6 +209,7 @@ def event(state, actor, action, detail="", doc_id=None):
 WORD = re.compile(r"[\w#]+")
 
 
+@functools.lru_cache(maxsize=2048)
 def term_pattern(phrase):
     """Whole-word match that tolerates extra spaces, hyphens and underscores.
 

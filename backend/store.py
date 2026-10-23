@@ -15,6 +15,9 @@ SCHEMA = {
     "workspaces": "CREATE TABLE IF NOT EXISTS workspaces(id TEXT PRIMARY KEY,state TEXT NOT NULL,rev INTEGER NOT NULL DEFAULT 1)",
     "users": "CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL)",
     "memberships": "CREATE TABLE IF NOT EXISTS memberships(workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL, display_name TEXT NOT NULL, PRIMARY KEY(workspace_id,user_id))",
+    "idx_users_email": "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+    "idx_memberships_workspace": "CREATE INDEX IF NOT EXISTS idx_memberships_workspace ON memberships(workspace_id)",
+    "idx_memberships_user": "CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id)",
 }
 
 
@@ -41,6 +44,8 @@ class Store:
         c = sqlite3.connect(self.path, timeout=15)
         try:
             c.execute("PRAGMA journal_mode=WAL")
+            c.execute("PRAGMA synchronous=NORMAL")
+            c.execute("PRAGMA busy_timeout=15000")
             ensure_schema(c)
             with c:
                 yield c
@@ -267,6 +272,8 @@ class Accounts:
         c = sqlite3.connect(self.path, timeout=15)
         try:
             c.execute("PRAGMA journal_mode=WAL")
+            c.execute("PRAGMA synchronous=NORMAL")
+            c.execute("PRAGMA busy_timeout=15000")
             ensure_schema(c)
             with c:
                 yield c

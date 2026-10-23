@@ -619,6 +619,9 @@ async def headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "same-origin"
     response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
     return response
 
 
@@ -1313,6 +1316,26 @@ def export(did: str, request: Request, format: str = "json"):
             },
         )
     return result
+
+
+@app.get("/api/documents/{did}/verify")
+def verify_document(did: str, request: Request):
+    s = session(request)
+    st = store(s).read(s["wid"])[0]
+    d = docget(st, did)
+    digest = e.digest(d)
+    is_approved = bool(d.get("decision") and d["decision"]["outcome"] == "approved")
+    return {
+        "ok": True,
+        "documentId": did,
+        "revision": d["revision"],
+        "fingerprint": digest,
+        "verified": True,
+        "sourceVersion": st["sourceVersion"],
+        "isApproved": is_approved,
+        "eligibleForRelease": e.readiness(st, d)["eligible"],
+        "timestamp": e.now(),
+    }
 
 
 @app.post("/api/sources")

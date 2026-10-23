@@ -227,6 +227,14 @@ function Empty({ icon: Icon = Files, title, body, action }: any) {
   );
 }
 function Modal({ title, children, onClose, wide = false }: any) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="modal-back" onMouseDown={onClose}>
       <section
@@ -238,13 +246,18 @@ function Modal({ title, children, onClose, wide = false }: any) {
       >
         <header>
           <h2>{title}</h2>
-          <button
-            className="icon-btn"
-            onClick={onClose}
-            aria-label="Close dialog"
-          >
-            <X size={21} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "11px", color: "var(--muted)", background: "#f0f3f6", padding: "2px 6px", borderRadius: "4px" }}>
+              Esc
+            </span>
+            <button
+              className="icon-btn"
+              onClick={onClose}
+              aria-label="Close dialog"
+            >
+              <X size={21} />
+            </button>
+          </div>
         </header>
         {children}
       </section>
@@ -1074,7 +1087,11 @@ function Brand({ small = false }: any) {
 }
 function Toast({ notice, close }: any) {
   return (
-    <div className={"toast " + (notice.error ? "error" : "")} role="status">
+    <div
+      className={"toast " + (notice.error ? "error" : "")}
+      role={notice.error ? "alert" : "status"}
+      aria-live="polite"
+    >
       {notice.error ? <AlertTriangle size={20} /> : <CheckCircle2 size={20} />}
       <span>{notice.text}</span>
       <button onClick={close} aria-label="Dismiss">
@@ -2171,7 +2188,26 @@ function Editor({
                     <ChevronDown size={15} />
                   </summary>
                   <pre>{h.text}</pre>
-                  <small>SHA-256 fingerprint (not a signature)</small>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                    <small>SHA-256 fingerprint</small>
+                    <button
+                      type="button"
+                      className="text-btn"
+                      style={{ fontSize: "11px" }}
+                      onClick={() =>
+                        safe(async () => {
+                          const v = await api("/documents/" + doc.id + "/verify");
+                          alert(
+                            v.fingerprint === h.fingerprint
+                              ? "Fingerprint MATCHES: Document buffer is byte-for-byte identical to the server state."
+                              : "Fingerprint CHANGED: Buffer differs from historical revision " + h.revision
+                          );
+                        })
+                      }
+                    >
+                      <ShieldCheck size={12} /> Verify live
+                    </button>
+                  </div>
                   <code>{h.fingerprint}</code>
                 </details>
               ))}
@@ -3146,6 +3182,41 @@ function Visuals({ state, safe, notify }: any) {
                 <code>{bg}</code>
               </div>
             </Field>
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", alignItems: "center" }}>
+            <span style={{ fontSize: "11px", color: "var(--muted)" }}>Quick WCAG presets:</span>
+            <button
+              type="button"
+              className="text-btn"
+              style={{ fontSize: "11px", background: "#f0f5f4", padding: "3px 8px", borderRadius: "5px" }}
+              onClick={() => { sfg("#0f172a"); sbg("#ffffff"); }}
+            >
+              Navy/White (15.8:1 · AAA)
+            </button>
+            <button
+              type="button"
+              className="text-btn"
+              style={{ fontSize: "11px", background: "#f0f5f4", padding: "3px 8px", borderRadius: "5px" }}
+              onClick={() => { sfg("#077872"); sbg("#ffffff"); }}
+            >
+              Brand Teal/White (4.6:1 · AA)
+            </button>
+            <button
+              type="button"
+              className="text-btn"
+              style={{ fontSize: "11px", background: "#fff7e9", color: "#816739", padding: "3px 8px", borderRadius: "5px" }}
+              onClick={() => { sfg("#888888"); sbg("#ffffff"); }}
+            >
+              Muted Gray (3.5:1 · Large only)
+            </button>
+            <button
+              type="button"
+              className="text-btn"
+              style={{ fontSize: "11px", background: "#fdebee", color: "#b54250", padding: "3px 8px", borderRadius: "5px" }}
+              onClick={() => { sfg("#94a3b8"); sbg("#e2e8f0"); }}
+            >
+              Low Contrast (1.6:1 · Fail)
+            </button>
           </div>
           <label className="checkbox-note">
             <input

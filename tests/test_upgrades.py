@@ -655,3 +655,49 @@ def test_preflight_rejects_unrelated_origin(client):
         },
     )
     assert pre.headers.get("access-control-allow-origin") != "https://evil.example"
+
+
+# --------------------------------------------------------------------------
+# Enterprise Hardening, Performance & Invariants Tests
+# --------------------------------------------------------------------------
+def test_security_headers_present_on_api_responses(client):
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    assert r.headers.get("x-content-type-options") == "nosniff"
+    assert r.headers.get("x-frame-options") == "DENY"
+    assert r.headers.get("referrer-policy") == "same-origin"
+    assert "no-store" in r.headers.get("cache-control", "")
+    assert "geolocation=()" in r.headers.get("permissions-policy", "")
+
+
+def test_document_fingerprint_verification_endpoint(client):
+    body = client.get("/api/state").json()
+    did = body["documents"][0]["id"]
+    r = client.get(f"/api/documents/{did}/verify")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["ok"] is True
+    assert data["documentId"] == did
+    assert len(data["fingerprint"]) == 64
+    assert data["verified"] is True
+
+
+def test_sqlite_wal_and_performance_pragmas(tmp_path):
+    import sqlite3
+    s = Store(tmp_path / "pragma_test.db")
+    with s.db() as c:
+        mode = c.execute("PRAGMA journal_mode").fetchone()[0]
+        sync = c.execute("PRAGMA synchronous").fetchone()[0]
+        assert mode.upper() == "WAL"
+        # 1 corresponds to NORMAL in SQLite
+        assert sync in (1, "1", "NORMAL", "normal")
+
+
+def test_term_pattern_lru_caching():
+    from backend import engine as e_mod
+    p1 = e_mod.term_pattern("affordable plan")
+    p2 = e_mod.term_pattern("affordable plan")
+    assert p1 == p2
+    info = e_mod.term_pattern.cache_info()
+    assert info.hits > 0
+

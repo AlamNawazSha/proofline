@@ -12,3 +12,5 @@ frontend/.next/
 frontend/node_modules/
 demo.sqlite3*
 accounts.sqlite3*
+scratch/
+*.tsbuildinfo
