@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
+*.db
+*.sqlite*
+private_files/
+frontend/.next/
+frontend/node_modules/
+demo.sqlite3*
+accounts.sqlite3*
