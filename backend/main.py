@@ -74,17 +74,17 @@ SESSION_COOKIE = "proofline"
 
 
 def _raw_session(request):
-    """Cookie first, then an Authorization bearer token.
+    """Authorization bearer token first, then cookie.
 
-    Preview panes and third-party iframes can block cookies entirely; without a
-    header fallback a successful sign-in would silently lose its session.
+    Checking bearer token first allows a visitor to open a distinct reviewer session
+    in a second tab on the same origin while retaining separation of duties.
     """
-    raw = request.cookies.get(SESSION_COOKIE, "")
-    if raw:
-        return raw
     header = request.headers.get("authorization", "")
     if header.lower().startswith("bearer "):
         return header[7:].strip()
+    raw = request.cookies.get(SESSION_COOKIE, "")
+    if raw:
+        return raw
     return ""
 
 
@@ -682,6 +682,20 @@ def persona(p: Payload, request: Request, response: Response):
     return {"ok": True, "sessionToken": token, "role": role}
 
 
+@app.post("/api/demo/reviewer-session")
+def demo_reviewer_session(request: Request):
+    s = session(request)
+    if s["mode"] != "demo":
+        raise HTTPException(403, "Reviewer session helper is available only in demo mode")
+    payload = {
+        "wid": s["wid"],
+        "mode": "demo",
+        "actor": {"id": "demo-reviewer", "name": "Jordan Lee", "role": "reviewer"},
+    }
+    token = signer.dumps(payload)
+    return {"ok": True, "sessionToken": token, "wid": s["wid"], "workspaceId": s["wid"]}
+
+
 @app.post("/api/logout")
 def logout(response: Response):
     response.delete_cookie("proofline")
@@ -1030,7 +1044,7 @@ def feedback(did: str, p: Payload, request: Request):
                     403,
                     "The creator cannot dismiss their own finding as a false positive",
                 )
-            if f["evidenceState"] == "no_evidence" or f["category"] in [
+            if (f["evidenceState"] == "no_evidence" and f["category"] != "claim") or f["category"] in [
                 "source",
                 "expired",
                 "privacy",

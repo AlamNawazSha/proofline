@@ -110,7 +110,7 @@ def seed(name="Northstar Studio"):
             id="RULE-005",
             name="No guaranteed or risk-free promises",
             kind="prohibited",
-            pattern="guaranteed, guarantee, risk-free, risk free",
+            pattern="guaranteed, guarantee, risk-free, risk free, definitely, no strings attached, 100% sure, 100% guaranteed, will cut ... in half, cut ... in half",
             severity="high",
             replacement="",
             quote="Never promise guaranteed or risk-free results.",
@@ -208,14 +208,49 @@ def event(state, actor, action, detail="", doc_id=None):
 # --------------------------------------------------------------- matching
 WORD = re.compile(r"[\w#]+")
 
+GUARANTEE_SYNONYMS = [
+    "definitely",
+    "no strings attached",
+    "risk-free",
+    "risk free",
+    "100% sure",
+    "100% guaranteed",
+    "will cut ... in half",
+    "cut ... in half",
+]
+
 
 @functools.lru_cache(maxsize=2048)
 def term_pattern(phrase):
-    """Whole-word match that tolerates extra spaces, hyphens and underscores.
+    """Whole-word match that tolerates extra spaces, hyphens, underscores, and ellipsis wildcards (...).
 
     "cheap plan" matches "cheap-plan", "Cheap  plan", "cheap_plan".
+    "cut ... in half" matches "cut your bills in half", etc.
     """
-    parts = [re.escape(p) for p in re.split(r"[\s\-_]+", phrase.strip()) if p]
+    phrase = phrase.strip()
+    if not phrase:
+        return None
+    if "..." in phrase or "…" in phrase:
+        sub_phrases = re.split(r"\.{3}|…", phrase)
+        sub_patterns = []
+        for sp in sub_phrases:
+            sp = sp.strip()
+            if not sp:
+                continue
+            parts = [re.escape(p) for p in re.split(r"[\s\-_]+", sp) if p]
+            if parts:
+                sub_patterns.append(r"(?<![\w-])" + r"[\s\-_]*".join(parts) + r"(?![\w-])")
+        if not sub_patterns:
+            return None
+        return r"(?:\s+[\w-]+){0,6}\s+".join(sub_patterns)
+    parts = []
+    for p in re.split(r"[\s\-_]+", phrase):
+        if not p:
+            continue
+        escaped = re.escape(p)
+        if "%" in p:
+            escaped = escaped.replace(r"\%", r"\s*%")
+        parts.append(escaped)
     if not parts:
         return None
     return r"(?<![\w-])" + r"[\s\-_]*".join(parts) + r"(?![\w-])"
@@ -225,9 +260,93 @@ def keyword_list(raw):
     return [k.strip().lower() for k in re.split(r"[,;]", raw or "") if k.strip()]
 
 
+MONTHS = r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
+DATE_PATTERNS = [
+    re.compile(
+        r"\b(?:\d{1,2}(?:st|nd|rd|th)?\s+" + MONTHS + r"(?:\s+\d{2,4})?|"
+        + MONTHS + r"\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*,?\s*\d{2,4})?|"
+        r"\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{2,4}|"
+        r"\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|ist|utc|gmt|est|pst)?|"
+        r"\d{1,2}\s*(?:am|pm)|\d+(?:st|nd|rd|th))\b",
+        re.I,
+    ),
+]
+LIST_PATTERNS = [
+    re.compile(r"(?:^|[\n\r]|;\s*|\.\s+|\(\s*)\(?\d{1,2}[.)]\s*", re.I),
+    re.compile(
+        r"\b(?:step|phase|item|stage|section|rule|chapter|part|version|v|vol)\.?\s+(\d+)\b",
+        re.I,
+    ),
+]
+YEAR_PREFIX_RE = re.compile(
+    r"(?:^|\b)(?:in|since|by|year|during|circa|est\.?|established|founded|before|after|from|until|to|©)\s+$",
+    re.I,
+)
+
 PERCENT = re.compile(
     r"(?<![\d.])(\d+(?:[.,]\d+)?)\s*(?:%|per\s*cent\b|percent\b)", re.I
 )
+SCALED_RE = re.compile(
+    r"(?<![\w$€£¥])(\d+(?:[.,]\d+)?)\s*(million|billion|trillion|thousand|hundred|k|m|b)\b(?:\s+([a-zA-Z]{2,}))?",
+    re.I,
+)
+CURRENCY_MULT_RE = re.compile(
+    r"([$€£¥]\s*\d+(?:[.,]\d+)*(?:\s*(?:million|billion|trillion|thousand|k|m|b))?|\b\d+(?:[.,]\d+)?\s*(?:\+|x|fold)\b)",
+    re.I,
+)
+COUNT_NOUN_RE = re.compile(r"(?<![\w$€£¥])(\d{1,6}(?:[.,]\d{1,3})?)\s+([a-zA-Z]{2,})\b")
+
+
+def extract_numeric_claim_spans(text):
+    ignored = []
+    for dp in DATE_PATTERNS:
+        for m in dp.finditer(text):
+            ignored.append((m.start(), m.end()))
+    for lp in LIST_PATTERNS:
+        for m in lp.finditer(text):
+            ignored.append((m.start(), m.end()))
+
+    raw_spans = []
+    for m in PERCENT.finditer(text):
+        raw_spans.append((m.start(), m.end(), m.group()))
+    for m in SCALED_RE.finditer(text):
+        raw_spans.append((m.start(), m.end(), m.group()))
+    for m in CURRENCY_MULT_RE.finditer(text):
+        raw_spans.append((m.start(), m.end(), m.group()))
+    for m in COUNT_NOUN_RE.finditer(text):
+        num_str = m.group(1).replace(",", "")
+        try:
+            num = float(num_str)
+        except ValueError:
+            continue
+        if 1900 <= num <= 2099:
+            before = text[max(0, m.start() - 25) : m.start()]
+            if YEAR_PREFIX_RE.search(before):
+                continue
+            noun = m.group(2).lower()
+            if noun in (
+                "by", "to", "ist", "utc", "and", "or", "until", "edition",
+                "report", "framework", "guidelines", "standard", "quarter",
+            ):
+                continue
+        raw_spans.append((m.start(), m.end(), m.group()))
+
+    filtered = []
+    for s, e, raw in raw_spans:
+        if any(not (e <= ign_s or s >= ign_e) for ign_s, ign_e in ignored):
+            continue
+        filtered.append((s, e, raw))
+
+    filtered.sort(key=lambda x: (x[0], -(x[1] - x[0])))
+    out = []
+    for item in filtered:
+        s, e, raw = item
+        if any(out_s <= s and e <= out_e for out_s, out_e, _ in out):
+            continue
+        out.append(item)
+    return out
+
+
 SENTENCE_END = re.compile(r"(?<!\d)[.!?](?!\d)|\n")
 
 
@@ -380,6 +499,10 @@ def check(state, doc):
             phrases = keyword_list(r.get("pattern")) + [
                 _ for _ in (r.get("variants") or [])
             ]
+            if r.get("id") == "RULE-005" or (r.get("kind") == "prohibited" and "guarantee" in r.get("name", "").lower()):
+                for syn in GUARANTEE_SYNONYMS:
+                    if syn not in phrases:
+                        phrases.append(syn)
             for phrase in [p for p in phrases if p.strip()]:
                 pattern = term_pattern(phrase)
                 if not pattern:
@@ -475,29 +598,37 @@ def check(state, doc):
                         category="claim",
                     )
 
-    # Percentages with no configured fact are an evidence gap, not a verdict.
-    for m in PERCENT.finditer(text):
-        start, end = sentence_bounds(text, m.start())
+    # Numerical and count claims with no approved evidence
+    claim_spans = extract_numeric_claim_spans(text)
+    for start, end, raw in claim_spans:
+        sent_start, sent_end = sentence_bounds(text, start)
+        sentence = text[sent_start:sent_end]
         covered = any(
             r["kind"] == "claim"
-            and applicable(r, doc, m.start())
+            and applicable(r, doc, start)
             and evidence(state, r)
             and any(
-                k in text[start:end].lower()
+                k in sentence.lower()
                 for k in (keyword_list(r.get("pattern")) or ["save"])
             )
             for r in active
         )
         if not covered:
+            covered = any(
+                raw.strip().lower() in s.get("body", "").lower()
+                for s in state.get("sources", [])
+                if s.get("active") and s.get("confirmed")
+            )
+        if not covered:
+            is_percent = bool(PERCENT.search(raw))
             add(
                 None,
-                m.start(),
-                m.end(),
-                "No approved fact is configured for this numerical claim. Supply approved evidence or rewrite it. "
-                "An unapproved number is not automatically false — it is unsupported.",
-                severity="high",
+                start,
+                end,
+                "No supporting evidence found in approved sources. This does not mean the claim is false.",
+                severity="medium",
                 category="claim",
-                name="Unapproved numerical claim",
+                name="Unapproved numerical claim" if is_percent else "Numeric/count claim with no approved evidence",
             )
 
     for label, m, sev in sensitive(text):

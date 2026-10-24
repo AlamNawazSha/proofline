@@ -1,29 +1,27 @@
-# Supabase setup (completed for this project)
+# Supabase setup
 
-**Status: connected and verified on 22 October 2026.**
+**Status: written, not integration-verified (as of 24 October 2026).**
 
-## Connected project
+## Project configuration
 | Field | Value |
 |---|---|
-| Project | `GEM-SENTINAL` (`ihfpdsftcgupdweufsql`) |
-| Region | `ap-southeast-1` (Singapore) |
-| Migration | `proofline_round2_schema` applied through the Supabase connector |
-| Objects created | `proofline_workspaces`, `proofline_members`, RLS policies, `proofline_cas_state()` RPC, private bucket `proofline-private` |
-| Auth policy change | `mailer_autoconfirm` enabled — **required**, because no SMTP is configured and confirmed-email sign-up could never complete |
-| Credentials | stored server-side in `proofline/.env` (git-ignored). Never exposed to the browser and never committed. |
+| Project | `<your-project-ref>` (unverified in shipped repository) |
+| Region | Configurable |
+| Migration | `supabase/001_proofline.sql` provided |
+| Objects defined | `proofline_workspaces`, `proofline_members`, RLS policies, `proofline_cas_state()` RPC, private bucket `proofline-private` |
+| Auth policy required | `mailer_autoconfirm` enabled if no SMTP server is configured |
+| Credentials | stored server-side in `.env` (git-ignored). Never exposed to the browser and never committed. |
 
-## What was verified end-to-end (real accounts, not simulated)
-| Check | Result |
-|---|---|
-| Create account (Supabase sign-up) | 200, workspace created, role `manager` |
-| Workspace persisted in Postgres | revision advanced after each mutation |
-| Second account created | distinct user id — genuinely separate identity |
-| Manager adds reviewer by user UUID | membership created |
-| Creator attempts to approve own document | **403 blocked** |
-| Reviewer switches into the creator's workspace | allowed only via membership check |
-| Reviewer approves | 200 `approved` |
-| Creator exports | 200 with receipt (`revision`, source pack, fingerprint) |
-| Creator edits after approval | export **409 `APPROVAL_OUTDATED`**, status *Approval outdated* |
+## Verification status
+| Check | Status | Evidence |
+|---|---|---|
+| Storage operations (mocked) | Verified in unit test | `tests/test_upgrades.py::test_supabase_storage_operations_mocked` |
+| CAS state RPC mutation (mocked) | Verified in unit test | `tests/test_upgrades.py::test_supabase_cas_rpc_mutation` |
+| Fail-closed on missing keys | Verified in unit test | `tests/test_core.py::test_supabase_does_not_fallback` |
+| Live hosted sign-in & session | Written, not integration-verified | Shipped `.env` leaves Supabase credentials empty; `/api/health` reports `supabaseConfigured: false` |
+| Live RLS policy enforcement | Written, not integration-verified | Requires live Supabase instance |
+| Live private bucket storage upload | Written, not integration-verified | Requires live Supabase instance |
+| Two-user approval separation | Verified locally | `Accounts` SQLite store + demo personas verified; hosted Supabase integration unverified |
 
 ## Configuration reference
 Server environment (`.env`, or the host's panel in production):

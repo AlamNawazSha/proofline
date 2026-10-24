@@ -2,7 +2,7 @@
 
 Legend: **✅ built + tested locally** · **◐ built, live integration unverified** · **○ not built** · **R3 planned improvement**
 
-Status date: 22 October 2026. Test evidence: `tests/test_core.py` (36 passing). No feature below is described as deployed, human-validated or production-certified.
+Status date: 24 October 2026. Test evidence: `tests/` (87 passing). No feature below is described as deployed, human-validated or production-certified.
 
 ## A. Approved brand knowledge
 
@@ -103,11 +103,11 @@ Status date: 22 October 2026. Test evidence: `tests/test_core.py` (36 passing). 
 
 ## I. Three substantial Round 3 improvements (must remain genuinely unfinished)
 
-1. **Evidence lifecycle at scale** — automatic affected-content discovery across all documents, expiry/conflict-driven re-review queues with assignments and notifications. (Round 2 only previews impact and blocks release.)
-2. **Visual & accessibility depth** — perceptual/embedding logo comparison with crop localisation, multi-foreground contrast sampling, richer alt-quality guidance, and recurring/disputed-rule analytics with trend history. (Round 2 is single-pair declared contrast + hash candidates + counts.)
-3. **Enterprise approval policy** — multi-reviewer quorum, revocation/escalation, exception policy with expiry, SSO, and hardened concurrency/load/security testing. (Round 2 is single authorised non-self reviewer.)
+1. **Evidence lifecycle: automatic re-review queue** — a persistent re-review queue across all documents when an approved source or rule changes, expires, or conflicts, creating per-document tasks, assignees, creator notifications, and tracking until closed. (Round 2 today only previews impact and invalidates approvals on edit/source change; re-opening documents is manual.)
+2. **Measured detection quality for AI-assisted review** — a frozen 30-item evaluation benchmark (tone, unsupported claims, terminology, valid claims that must not be flagged, ambiguous text, conflicting sources, malformed model responses) with two independent annotators, reporting published precision, recall, false-positive rate, quote validity, latency, and failure rate, broken down between deterministic rules and AI findings. (Round 2 today has never run AI against a live provider; detection quality is unmeasured.)
+3. **Multi-reviewer approval policy** — channel- and severity-driven quorum (e.g., high-risk copy requires two distinct authorised reviewers), explicit approval revocation with reason logging, escalation after unanswered deadlines, and time-bounded exception policies. (Round 2 today enforces exactly one authorised non-self reviewer per revision.)
 
-If any of these is brought forward into Round 2, this list must be updated and the Round 3 proposal re-chosen.
+Visual and accessibility basics (contrast checks, alt-text presence, and bounded logo hash comparison) were brought forward into Round 2, leaving the three improvements above strictly unbuilt.
 
 ---
 

@@ -15,6 +15,6 @@ npm run dev
 
 Open http://localhost:3000 and click **Explore the working demo**.
 
-Tests: `python -m pytest tests/ -q`  → 36 passing.
+Tests: `python -m pytest tests/ -q`  → 87 passing (as of 24 October 2026).
 
-Optional real integrations: copy `.env.example` to `.env` and fill in Supabase values (see `docs/SUPABASE_SETUP.md`) and an OpenAI key. Never commit `.env`.
+Optional real integrations: copy `.env.example` to `.env` and fill in Supabase values (see `docs/SUPABASE_SETUP.md`) and an OpenAI key. Live Supabase and live OpenAI remain unverified in the shipped distribution. Never commit `.env`.

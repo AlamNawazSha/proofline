@@ -26,4 +26,4 @@ Each item states what Round 2 already does, what Round 3 adds, how it is proven,
 
 ## Deliberately dropped from earlier drafts
 
-SSO and generic load testing were removed: they are not substantive product improvements for this brief and would read as padding.
+SSO and generic load testing were removed: they are not substantive product improvements for this brief and would read as padding. Visual and accessibility basics (contrast checks, alt-text presence, and bounded logo hash comparison) were brought forward into Round 2, leaving the three improvements above strictly unbuilt.

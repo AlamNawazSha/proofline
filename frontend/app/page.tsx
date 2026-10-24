@@ -46,7 +46,17 @@ import {
 
 let SESSION: string | null = null;
 try {
-  if (typeof window !== "undefined") SESSION = window.sessionStorage.getItem("proofline.session");
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    const urlSession = params.get("session");
+    if (urlSession) {
+      SESSION = urlSession;
+      window.sessionStorage.setItem("proofline.session", urlSession);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      SESSION = window.sessionStorage.getItem("proofline.session");
+    }
+  }
 } catch {
   SESSION = null; // storage can be blocked inside sandboxed previews
 }
@@ -98,7 +108,12 @@ async function api(path: string, method = "GET", data?: any) {
     result = { detail: `Unexpected response from the API (HTTP ${r.status}).` };
   }
   if (r.ok && result && result.sessionToken) rememberSession(result.sessionToken);
-  if (!r.ok && r.status === 401) forgetSession();
+  if (!r.ok && r.status === 401) {
+    forgetSession();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("proofline:session_expired"));
+    }
+  }
   if (!r.ok) {
     const message =
       typeof result.detail === "string"
@@ -294,7 +309,20 @@ export default function App() {
     [modal, setModal] = useState<any>(null),
     [search, setSearch] = useState(""),
     [mobile, setMobile] = useState(false),
+    [sessionExpired, setSessionExpired] = useState(false),
     [filter, setFilter] = useState("All");
+
+  const openSecondSessionAsReviewer = async () => {
+    try {
+      const res = await api("/demo/reviewer-session", "POST");
+      if (res?.sessionToken) {
+        window.open(`/?session=${encodeURIComponent(res.sessionToken)}&role=reviewer`, "_blank");
+      }
+    } catch (e: any) {
+      setNotice({ error: true, text: e.message || "Failed to create reviewer session." });
+    }
+  };
+
   const refresh = async () => {
     const data = await api("/state");
     setState(data);
@@ -305,6 +333,7 @@ export default function App() {
       await api("/demo", "POST");
       const data = await api("/state");
       setState(data);
+      setSessionExpired(false);
       setNotice({
         text: "A fresh isolated demo workspace was opened because the previous one expired.",
       });
@@ -313,6 +342,14 @@ export default function App() {
       return false;
     }
   };
+  useEffect(() => {
+    const handleExpired = () => {
+      setSessionExpired(true);
+      setNotice({ error: true, text: "Your session expired (1-hour limit). Click Restore Demo Session to continue." });
+    };
+    window.addEventListener("proofline:session_expired", handleExpired);
+    return () => window.removeEventListener("proofline:session_expired", handleExpired);
+  }, []);
   useEffect(() => {
     api("/config")
       .then(setConfig)
@@ -324,7 +361,11 @@ export default function App() {
       );
     refresh().catch(async (e: any) => {
       if (e.status === 401) {
-        await recover();
+        setSessionExpired(true);
+        setNotice({
+          error: true,
+          text: "Your session expired (1-hour limit). Click below to restore your demo workspace.",
+        });
         return;
       }
       setNotice({ error: true, text: e.message });
@@ -398,6 +439,49 @@ export default function App() {
   if (!state)
     return (
       <div className="landing">
+        {sessionExpired && (
+          <div
+            role="alert"
+            style={{
+              background: "#fffbeb",
+              border: "1px solid #fde68a",
+              padding: "14px 24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <AlertTriangle size={18} color="#b45309" />
+              <div>
+                <strong style={{ color: "#92400e", fontSize: "13px" }}>Session Expired (1-Hour Limit)</strong>
+                <p style={{ margin: "2px 0 0", color: "#b45309", fontSize: "12px" }}>
+                  Your session expired after 1 hour. Restore your demo workspace or sign in below.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  setSessionExpired(false);
+                  await recover();
+                }}
+              >
+                Restore Demo Session
+              </Button>
+              <Button
+                onClick={() => {
+                  setSessionExpired(false);
+                  setModal({ type: "login" });
+                }}
+              >
+                Sign In
+              </Button>
+            </div>
+          </div>
+        )}
         <header className="landing-nav">
           <Brand />
           <span className="landing-small">
@@ -625,22 +709,111 @@ export default function App() {
             </div>
           </div>
         </header>
-        {state.mode === "demo" && (
-          <StepBar state={state} open={openDoc} safe={safe} />
+        {sessionExpired && (
+          <div
+            role="alert"
+            style={{
+              background: "#fffbeb",
+              border: "1px solid #fde68a",
+              padding: "14px 24px",
+              margin: "12px 35px",
+              borderRadius: "8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <AlertTriangle size={18} color="#b45309" />
+              <div>
+                <strong style={{ color: "#92400e", fontSize: "13px" }}>Session Expired (1-Hour Limit)</strong>
+                <p style={{ margin: "2px 0 0", color: "#b45309", fontSize: "12px" }}>
+                  Your session has reached the 1-hour expiration limit. Restore the demo workspace or sign in again to continue.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  setSessionExpired(false);
+                  await recover();
+                }}
+              >
+                Restore Demo Session
+              </Button>
+              <Button
+                onClick={() => {
+                  setSessionExpired(false);
+                  setModal({ type: "login" });
+                }}
+              >
+                Sign In
+              </Button>
+            </div>
+          </div>
         )}
         {state.mode === "demo" && (
-          <div className="dev-banner">
-            <Info size={14} />
-            <span>
-              <strong>Isolated local demo.</strong> Real backend checks,
-              synthetic brand data.{" "}
-              {config?.supabaseConfigured
-                ? "Supabase configured; this session remains separate."
-                : "Supabase is not connected yet."}{" "}
-              {config?.aiConfigured
-                ? "AI calls require explicit consent."
-                : "AI is not configured; semantic coverage requires human review."}
-            </span>
+          <StepBar
+            state={state}
+            open={openDoc}
+            safe={safe}
+            onOpenReviewer={openSecondSessionAsReviewer}
+          />
+        )}
+        {state.mode === "demo" && (
+          <div
+            className="dev-banner"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "10px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+              <Info size={14} />
+              <span>
+                <strong>Isolated local demo.</strong> Real backend checks,
+                synthetic brand data.{" "}
+                {config?.supabaseConfigured
+                  ? "Supabase configured; this session remains separate."
+                  : "Supabase is not connected yet."}{" "}
+                {config?.aiConfigured
+                  ? "AI calls require explicit consent."
+                  : "AI is not configured; semantic coverage requires human review."}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                flexShrink: 0,
+              }}
+            >
+              <button
+                type="button"
+                className="btn"
+                onClick={openSecondSessionAsReviewer}
+                title="demo only: separate persona; real accounts enforce this server-side"
+                style={{
+                  fontSize: "11px",
+                  minHeight: "28px",
+                  padding: "4px 10px",
+                  background: "#f0fdf4",
+                  borderColor: "#86efac",
+                  color: "#166534",
+                }}
+              >
+                <ExternalLink size={13} /> Open a second session as Reviewer
+              </button>
+              <small style={{ fontSize: "11px", color: "#796849" }}>
+                demo only: separate persona; real accounts enforce this server-side
+              </small>
+            </div>
           </div>
         )}
         <main className="content">
@@ -988,50 +1161,58 @@ export default function App() {
     </div>
   );
 }
-function StepBar({ state, open, safe }: any) {
+function StepBar({ state, open, safe, onOpenReviewer }: any) {
   const docs = state.documents || [];
   const steps = [
     {
       label: "Run a review",
+      expected: "Flags guaranteed savings and terminology issues with exact source quotes.",
       done: docs.some((d: any) => d.review),
       hint: "Open the seeded draft and press Run review.",
       act: () => docs[0] && open(docs[0].id),
     },
     {
       label: "Correct and recheck",
+      expected: "Generates revision 2 with zero unresolved findings.",
       done: docs.some((d: any) => d.revision > 1),
       hint: "Fix a finding, save, and review the new revision.",
       act: () => docs[0] && open(docs[0].id),
     },
     {
       label: "Request approval",
+      expected: "Submits draft to review inbox; creator self-approval is blocked with 403.",
       done: docs.some((d: any) => d.submitted || d.decision),
       hint: "Press Request approval on the reviewed revision.",
       act: () => docs[0] && open(docs[0].id),
     },
     {
       label: "Approve as a different person",
+      expected: "Reviewer verifies coverage and signs exact fingerprint (200).",
       done: docs.some((d: any) => d.decision?.outcome === "approved"),
       hint:
         state.actor.role === "reviewer"
           ? "Tick the human-review box and approve the exact version."
-          : "Switch the persona to Reviewer first — a creator cannot approve their own content.",
+          : "Open a second session as Reviewer in a separate tab to approve without playing both roles.",
       act: () =>
         state.actor.role === "reviewer"
           ? docs[0] && open(docs[0].id)
-          : safe(
-              () => api("/persona", "POST", { role: "reviewer" }),
-              "Demo persona changed to Reviewer.",
-            ),
+          : onOpenReviewer
+            ? onOpenReviewer()
+            : safe(
+                () => api("/persona", "POST", { role: "reviewer" }),
+                "Demo persona changed to Reviewer.",
+              ),
     },
     {
       label: "Export the receipt",
+      expected: "Returns 200 receipt bound to revision and active source version.",
       done: (state.receipts || []).length > 0,
       hint: "Download the report or JSON receipt.",
       act: () => docs[0] && open(docs[0].id),
     },
     {
       label: "Prove the approval goes stale",
+      expected: "Post-approval edit revokes authorisation; export blocked with 409.",
       done: docs.some((d: any) => d.status === "Approval outdated"),
       hint: "Edit the approved content: export must now be blocked.",
       act: () => docs[0] && open(docs[0].id),
@@ -1056,19 +1237,50 @@ function StepBar({ state, open, safe }: any) {
         ))}
       </div>
       <div className="stepbar-text">
-        <strong>
-          Next: step {idx + 1} of {steps.length} — {current.label}
-        </strong>
-        <span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <strong>
+            Step {idx + 1} of {steps.length}: {current.label}
+          </strong>
+          <span
+            className={"badge " + (current.done ? "green" : "blue")}
+            style={{ fontSize: "11px", padding: "1px 6px" }}
+          >
+            {current.done ? "Completed" : "In progress"}
+          </span>
+        </div>
+        <div style={{ fontSize: "12px", color: "var(--teal)", marginTop: "2px" }}>
+          <strong>Expected:</strong> {current.expected}
+        </div>
+        <span style={{ fontSize: "12px", color: "var(--sub)" }}>
           {current.done
             ? "All six steps complete. Start a fresh demo to repeat the journey."
             : current.hint}
         </span>
       </div>
-      <button className="stepbar-btn pulse" onClick={current.act}>
-        {current.done ? "Restart demo" : "Take me there"}{" "}
-        <ArrowRight size={14} />
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {idx === 3 && state.actor.role !== "reviewer" && onOpenReviewer && (
+          <button
+            type="button"
+            className="btn"
+            onClick={onOpenReviewer}
+            title="demo only: separate persona; real accounts enforce this server-side"
+            style={{
+              fontSize: "11px",
+              padding: "4px 9px",
+              minHeight: "30px",
+              background: "#f0fdf4",
+              borderColor: "#86efac",
+              color: "#166534",
+            }}
+          >
+            <ExternalLink size={13} /> Open Reviewer tab
+          </button>
+        )}
+        <button className="stepbar-btn pulse" onClick={current.act}>
+          {current.done ? "Restart demo" : "Take me there"}{" "}
+          <ArrowRight size={14} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -1795,6 +2007,11 @@ function Editor({
               >
                 <strong>{doc.review.status.toUpperCase()} REVIEW</strong>
                 <p>{doc.review.message}</p>
+                {doc.review.status === "partial" && (
+                  <p style={{ margin: "6px 0", fontSize: "12px", fontWeight: 600 }}>
+                    Partial = rules ran; semantic/AI review did not. A human confirms coverage before approval.
+                  </p>
+                )}
                 {doc.review.coverage && (
                   <small>
                     Rules: {doc.review.coverage.rules}
@@ -1819,7 +2036,7 @@ function Editor({
                   <li>
                     Coverage status: {doc.review.status} —{" "}
                     {doc.review.status === "partial"
-                      ? "some checks are incomplete and need human review"
+                      ? "Partial = rules ran; semantic/AI review did not. A human confirms coverage before approval."
                       : "all configured checks completed"}
                   </li>
                   <li>
@@ -1855,6 +2072,11 @@ function Editor({
               <h3>
                 <ShieldCheck size={18} /> Reviewer decision
               </h3>
+              {doc.review?.status === "partial" && (
+                <p style={{ margin: "4px 0 10px 0", fontSize: "12px", color: "var(--muted)" }}>
+                  Partial = rules ran; semantic/AI review did not. A human confirms coverage before approval.
+                </p>
+              )}
               <label className="checkbox-note">
                 <input
                   type="checkbox"

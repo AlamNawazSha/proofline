@@ -13,7 +13,7 @@ Team: **syedsuhailahamed.m26** · Product: **Proofline**
 | 4 | Completed-feature list | `FEATURES_STATUS.md` is the draft; convert to PDF |
 | 5 | Technology / implementation details | `README.md` §4–§7 is the draft |
 | 6 | Changes from the Round 1 plan | Draft below |
-| 7 | Three substantial Round 3 improvements | `FEATURES_STATUS.md` §I |
+| 7 | Three substantial Round 3 improvements | `docs/ROUND3.md` & `FEATURES_STATUS.md` §I: (1) evidence lifecycle re-review queue, (2) measured AI-assisted detection quality, (3) multi-reviewer approval policy. Visual/accessibility basics brought forward to R2. |
 
 ## Changes from the Round 1 plan (draft, edit before publishing)
 - Round 1 proposed the governance concept and scope; Round 2 delivers a running reviewer-controlled pipeline: confirmed sources → deterministic checks → creator corrections → non-self approval → exact-version export.
@@ -29,8 +29,8 @@ Team: **syedsuhailahamed.m26** · Product: **Proofline**
 ## Must-do before submitting
 1. Deploy frontend + API; verify demo opens in a private/incognito window with no sign-in.
 2. Run the seven-item links in incognito; confirm no 404 and no credential prompts.
-3. Re-run `python -m pytest tests/test_core.py -q`; record the pass count and date.
-4. Supabase: complete `docs/SUPABASE_SETUP.md` verification table or explicitly state it is unverified.
+3. Re-run `python -m pytest tests -q`; record the pass count and date (**87 passed** on 24 Oct 2026).
+4. Supabase: complete `docs/SUPABASE_SETUP.md` verification table or explicitly state it is unverified (status: written, not integration-verified).
 5. Confirm the officially registered team name before using it on any document.
 6. Remove secrets from PDFs, screenshots and repository; confirm `.env` ignored.
 7. Record any genuine external user feedback actually received; do not invent it.
@@ -47,7 +47,7 @@ Team: **syedsuhailahamed.m26** · Product: **Proofline**
 | Tone, terminology, messaging checks | Partly | Deterministic keyword/claim rules tested; AI semantic check written but never run live |
 | Unsupported claims tied to evidence | Built | Exact-quote binding; missing evidence reported as unsupported, not false |
 | Explain, suggest, preserve intent | Built | Accept with regression preview, Rewrite, Contest, resolution feedback |
-| Comments, approvals, history, roles | Built in demo | Real Supabase role enforcement unverified |
+| Comments, approvals, history, roles | Built in demo | Real Supabase role enforcement unverified; local accounts & demo verified |
 | Visual consistency (logo) | Basic | 8×8 average hash + aspect distortion; always needs human confirmation |
 | Accessibility | Built (bounded) | Declared colour-pair contrast and alt-text presence only |
 | Repeated / disputed rule report | Built | Counts computed from actual findings and feedback |
@@ -59,7 +59,7 @@ Team: **syedsuhailahamed.m26** · Product: **Proofline**
 
 ## Reliability section (real numbers only)
 
-- Backend tests: **62 passed** on 22 Oct 2026, commit recorded in `docs/TEST_REPORT.md`.
+- Backend tests: **87 passed** on 24 Oct 2026, commit recorded in `docs/TEST_REPORT.md`.
 - Frontend: TypeScript check and production build pass.
 - Live journey verified through the Next.js proxy against the running API.
 - **Not measured:** deployed latency, cold-start time, concurrent-session timings, browser rendering. Do not insert figures for these until they are actually run.
