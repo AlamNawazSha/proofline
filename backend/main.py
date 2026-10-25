@@ -2119,7 +2119,11 @@ def delete_document(did: str, request: Request):
     return store(s).mutate(s["wid"], fn)
 
 
+@app.get("/healthz")
+@app.get("/health")
 @app.get("/api/health")
+@app.get("/api/healthz")
+@app.get("/")
 def health():
     return {
         "ok": True,
