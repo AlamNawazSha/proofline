@@ -130,9 +130,11 @@ async function api(path: string, method = "GET", data?: any) {
       ACTION_HINT[result.code] ||
       (r.status === 429
         ? "wait a moment and retry"
-        : r.status >= 500
-          ? "the backend reported an error — check the API log"
-          : "");
+        : r.status === 502 || r.status === 503 || r.status === 504
+          ? "the backend may be waking up from cold start — retry in 30 seconds"
+          : r.status >= 500
+            ? "the backend reported an error — check the API log"
+            : "");
     const err: any = new Error(hint ? message + " — " + hint : message);
     err.code = result.code || String(r.status);
     err.action = result.action;
@@ -142,6 +144,7 @@ async function api(path: string, method = "GET", data?: any) {
   return result;
 }
 const ACTION_HINT: any = {
+  BACKEND_NOT_CONFIGURED: "configure API_INTERNAL_URL in Vercel Project Settings > Environment Variables and redeploy",
   RELOAD_LATEST: "reload and merge your changes",
   RERUN_REVIEW: "run the review again",
   SWITCH_ROLE: "switch to an authorised role (e.g. Reviewer)",

@@ -557,10 +557,15 @@ app = FastAPI(title="Proofline API", version="0.1.0", lifespan=lifespan)
 # triggers a preflight. Without CORS the preflight 405s and the browser blocks
 # the request, which looks exactly like a lost session. Allow only the origins
 # we actually serve: the opaque preview origin, localhost, and *.e2b.app.
+cors_origins = ["null", "http://localhost:3000", "http://127.0.0.1:3000"]
+extra_origins = os.getenv("CORS_ORIGIN", "")
+if extra_origins:
+    cors_origins.extend([o.strip().rstrip("/") for o in extra_origins.split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["null", "http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_origin_regex=r"https?://([a-z0-9-]+\.)*(e2b\.app|localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https?://([a-z0-9-]+\.)*(e2b\.app|vercel\.app|localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

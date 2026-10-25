@@ -13,3 +13,5 @@ services:
         generateValue: true
       - key: DEMO_ENABLED
         value: "true"
+      - key: CORS_ORIGIN
+        value: "https://proofline-ruby-three.vercel.app"
