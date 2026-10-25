@@ -1,6 +1,6 @@
 import "./globals.css";
 export const metadata = {
-  title: "Proofline — evidence before approval",
+  title: "Proofline",
   description:
     "Review content against approved brand knowledge. Human control, exact-version approval.",
 };
