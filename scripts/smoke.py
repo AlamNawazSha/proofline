@@ -25,6 +25,11 @@ def run_smoke(base_url: str):
     print(f"=== Proofline E2E Smoke Test ===")
     print(f"Target: {base_url}\n")
 
+    if base_url.startswith("http://") and not any(loc in base_url for loc in ["127.0.0.1", "localhost", "0.0.0.0"]):
+        print("[NOTE] Remote target uses plain 'http://'. If APP_ENV=production, session cookies")
+        print("       are flagged Secure=True and will not be sent over plain HTTP, which causes")
+        print("       a 401 Unauthorized at Step 1 (/api/state). Always test deployed instances via 'https://'.\n")
+
     session = requests.Session()
 
     def check(step_num: int, name: str, condition: bool, err_msg: str):
@@ -46,7 +51,10 @@ def run_smoke(base_url: str):
     check(1, "Demo Workspace Init", r.status_code == 200, f"Expected 200, got {r.status_code}")
 
     r_st = session.get(f"{base_url}/api/state")
-    check(1, "Fetch State", r_st.status_code == 200, f"Expected 200, got {r_st.status_code}")
+    hint = ""
+    if r_st.status_code == 401 and base_url.startswith("http://"):
+        hint = " (Cookies are Secure in production: rerun smoke test against the 'https://' URL)"
+    check(1, "Fetch State", r_st.status_code == 200, f"Expected 200, got {r_st.status_code}{hint}")
     st = r_st.json()
     check(1, "Creator Actor", st["actor"]["role"] == "creator", f"Expected creator, got {st['actor']['role']}")
     doc = st["documents"][0]

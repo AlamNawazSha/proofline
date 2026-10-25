@@ -28,9 +28,11 @@ Render hosts the REST API backend as a persistent Web Service.
 ### Environment Variables
 | Variable | Required | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `SESSION_SECRET` | Recommended | Secret key for signed session cookies and bearer tokens | `openssl rand -hex 32` |
+| `SESSION_SECRET` | **Required in production** | 32-byte secret key for signed session cookies and bearer tokens (server crashes with `RuntimeError` if missing when `APP_ENV=production`) | `openssl rand -hex 32` |
+| `APP_ENV` | Recommended | Environment mode (`production` enables `Secure` cookies and requires `SESSION_SECRET`) | `production` |
 | `CORS_ORIGIN` | Recommended | Allowed frontend origin for cross-origin credentials | `https://proofline.vercel.app` |
 | `OPENAI_API_KEY` | Optional | Live OpenAI API key for semantic verification (unverified in demo) | `sk-...` |
+| `OPENAI_BASE_URL` | Optional | Custom OpenAI-compatible base URL (e.g. Gemini or Ollama endpoints) | `https://generativelanguage.googleapis.com/v1beta/openai` |
 | `SUPABASE_URL` | Optional | Supabase project URL for hosted PostgreSQL store | `https://xyz.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional | Supabase service role secret for server-side persistence | `eyJ...` |
 
@@ -64,6 +66,9 @@ Once live URLs are provisioned, run the automated verification script against th
 python scripts/smoke.py https://proofline.vercel.app
 ```
 
+> [!IMPORTANT]
+> **Run Smoke Tests over HTTPS Only**: In production mode (`APP_ENV=production`), session cookies are set with `Secure=True`. HTTP clients (including `requests.Session`) will withhold secure cookies when interacting over plain `http://`, resulting in a `401 Unauthorized` failure at Step 1 (`/api/state`). Always supply the `https://` endpoint when testing deployed services.
+
 The script executes the full governance lifecycle against the target URL:
 1. `POST /api/demo` — initializes isolated synthetic workspace.
 2. `PUT /api/documents/{id}` — saves draft revision with non-compliant claim.
@@ -78,3 +83,24 @@ The script executes the full governance lifecycle against the target URL:
 11. `GET /api/documents/{id}/export` — **asserts 409 Conflict** (export blocked due to post-approval modification).
 
 The script exits `0` on total success or non-zero (`1`) if any invariant fails.
+
+---
+
+## 4. Operational Notes for Hackathon Judging
+
+### 1. Free-Tier Cold Starts (Render)
+Render's free tier spins down idle instances after 15 minutes. Cold starts take approximately 30–50 seconds to initialize the Python container.
+- **Pre-judging warm up**: 5–10 minutes before judging evaluation, ping the health endpoint:
+  ```bash
+  curl -s https://<your-render-url>/api/health
+  ```
+  or open the live URL in your browser so the container is active and warm.
+
+### 2. Ephemeral Storage & Judge Instructions
+- On free-tier cloud hosting (e.g., Render free tier), the local file system is ephemeral. Any accounts created via local SQLite (`accounts.sqlite3`) will reset if the container restarts.
+- **Instruct judges to click "Explore the working demo"**: The demo workflow runs in an isolated workspace seeded on demand, guaranteeing a reliable, repeatable 2-minute evaluation journey with zero login barrier.
+
+### 3. Secret Management & Key Rotation
+- **Never commit `.env` or include it in zip archives**.
+- Inject `OPENAI_API_KEY`, `SESSION_SECRET`, and database secrets exclusively via the Render environment variables dashboard.
+- If a populated `.env` was shared or uploaded previously, revoke and rotate the API key immediately in the provider console.

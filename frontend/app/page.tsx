@@ -1468,7 +1468,7 @@ function Login({ config, close, onDone }: any) {
         </p>
       ) : (
         <div className="callout amber">
-          <AlertTriangle size={18} /> Supabase is not configured. Local development accounts are enabled and stored on this server with PBKDF2 password hashing.
+          <AlertTriangle size={18} /> Supabase is not configured. Local development accounts are enabled and stored on this server with PBKDF2 password hashing. (On ephemeral free-tier cloud hosting, local accounts reset on restart — judges should use &quot;Explore the working demo&quot; instead).
         </div>
       )}
       <form onSubmit={submit}>
