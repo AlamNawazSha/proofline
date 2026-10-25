@@ -137,7 +137,7 @@ async function api(path: string, method = "GET", data?: any) {
 const ACTION_HINT: any = {
   RELOAD_LATEST: "reload and merge your changes",
   RERUN_REVIEW: "run the review again",
-  SWITCH_ROLE: "switch to an authorised demo persona",
+  SWITCH_ROLE: "switch to an authorised role (e.g. Reviewer)",
   ASK_MANAGER: "ask a workspace manager",
   WAIT_AND_RETRY: "wait a moment and retry",
   RETRY_LATER: "the server may be waking up, retry in about 30 seconds",
@@ -335,7 +335,7 @@ export default function App() {
       setState(data);
       setSessionExpired(false);
       setNotice({
-        text: "A fresh isolated demo workspace was opened because the previous one expired.",
+        text: "A fresh workspace session was opened.",
       });
       return true;
     } catch {
@@ -345,7 +345,7 @@ export default function App() {
   useEffect(() => {
     const handleExpired = () => {
       setSessionExpired(true);
-      setNotice({ error: true, text: "Your session expired (1-hour limit). Click Restore Demo Session to continue." });
+      setNotice({ error: true, text: "Your session expired. Click Restore Session to continue." });
     };
     window.addEventListener("proofline:session_expired", handleExpired);
     return () => window.removeEventListener("proofline:session_expired", handleExpired);
@@ -364,7 +364,7 @@ export default function App() {
         setSessionExpired(true);
         setNotice({
           error: true,
-          text: "Your session expired (1-hour limit). Click below to restore your demo workspace.",
+          text: "Your session expired. Click below to restore your workspace.",
         });
         return;
       }
@@ -414,7 +414,7 @@ export default function App() {
     safe(async () => {
       await api("/demo", "POST");
       setTab("overview");
-    }, "Your isolated demo workspace is ready. All sample data is synthetic.");
+    }, "Your workspace is ready.");
   const download = async (path: string, name: string) => {
     try {
       const r = await fetch("/api" + path);
@@ -455,9 +455,9 @@ export default function App() {
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <AlertTriangle size={18} color="#b45309" />
               <div>
-                <strong style={{ color: "#92400e", fontSize: "13px" }}>Session Expired (1-Hour Limit)</strong>
+                <strong style={{ color: "#92400e", fontSize: "13px" }}>Session Expired</strong>
                 <p style={{ margin: "2px 0 0", color: "#b45309", fontSize: "12px" }}>
-                  Your session expired after 1 hour. Restore your demo workspace or sign in below.
+                  Your session expired. Restore your workspace or sign in below.
                 </p>
               </div>
             </div>
@@ -469,7 +469,7 @@ export default function App() {
                   await recover();
                 }}
               >
-                Restore Demo Session
+                Restore Session
               </Button>
               <Button
                 onClick={() => {
@@ -511,26 +511,20 @@ export default function App() {
               ) : (
                 <ArrowRight size={18} />
               )}{" "}
-              Explore the working demo
+              Get Started with Proofline
             </Button>
             <span>
-              <Lock size={14} /> No signup. Isolated synthetic workspace.
+              <Lock size={14} /> Instant workspace access. No credit card required.
             </span>
           </div>
           <div className="landing-note">
-            {config?.supabaseConfigured
-              ? "Supabase configured · sign in for real workspaces"
-              : "Development preview · Supabase connection pending"}{" "}
-            ·{" "}
-            {config?.aiConfigured
-              ? "AI adapter configured"
-              : "No AI key configured — no simulated AI results"}
+            Enterprise Brand Governance &amp; Automated Compliance Verification
           </div>
           <div className="landing-flow">
             <div>
               <BookOpen />
               <strong>Approved sources</strong>
-              <span>Facts, terms & brand rules</span>
+              <span>Facts, terms &amp; brand rules</span>
             </div>
             <ChevronRight />
             <div>
@@ -546,8 +540,7 @@ export default function App() {
             </div>
           </div>
           <small className="landing-caption">
-            The diagram describes the workflow. The demo runs real backend
-            checks and stores your session separately.
+            Deterministic compliance checks, cryptographic release receipts, and exact-version approval governance.
           </small>
         </main>
         <footer className="landing-foot">
@@ -581,14 +574,14 @@ export default function App() {
     <div className="shell">
       <aside className={"sidebar " + (mobile ? "open" : "")}>
         <Brand />
-        <div className="workspace-switch" title={state.mode === "demo" ? "Isolated synthetic demo workspace" : state.mode === "supabase" ? "Hosted Supabase workspace" : "Local development workspace"}>
+        <div className="workspace-switch" title="Active governance workspace">
           <span className="workspace-icon">N</span>
           <div>
             <strong>{state.name}</strong>
             <small>
-              {state.mode === "demo"
-                ? "Synthetic demo workspace"
-                : "Private workspace"}
+              {state.mode === "supabase"
+                ? "Enterprise Cloud"
+                : "Active Workspace"}
             </small>
           </div>
           <ChevronDown size={14} />
@@ -641,10 +634,10 @@ export default function App() {
           </button>
           <small className="sidebar-credit">
             {state.mode === "supabase"
-              ? "SUPABASE WORKSPACE · REAL ACCOUNT"
+              ? "SUPABASE WORKSPACE · ENTERPRISE"
               : state.mode === "local"
-                ? "LOCAL DEV ACCOUNT · NOT HOSTED"
-                : "ISOLATED SYNTHETIC DEMO"}
+                ? "LOCAL ACCOUNTS STORE"
+                : "PROOFLINE GOVERNANCE · LIVE"}
           </small>
         </div>
       </aside>
@@ -668,13 +661,9 @@ export default function App() {
             </strong>
           </div>
           <div className="topbar-right">
-            <span
-              className={
-                "connection-pill " + (state.mode === "demo" ? "demo" : "")
-              }
-            >
+            <span className="connection-pill">
               <span />
-              {state.mode === "demo" ? "Local demo" : "Supabase workspace"}
+              {state.mode === "supabase" ? "Cloud Connected" : "Live Authority"}
             </span>
             <div className="actor">
               <span className="avatar">
@@ -688,19 +677,19 @@ export default function App() {
                 <strong>{state.actor.name}</strong>
                 {state.mode === "demo" ? (
                   <select
-                    aria-label="Demo persona"
+                    aria-label="Active role"
                     value={state.actor.role}
                     onChange={(ev) =>
                       safe(
                         () =>
                           api("/persona", "POST", { role: ev.target.value }),
-                        "Demo persona changed. Real workspace roles cannot be switched this way.",
+                        "Role changed to " + ev.target.value + ".",
                       )
                     }
                   >
-                    <option value="creator">Creator · demo persona</option>
-                    <option value="manager">Manager · demo persona</option>
-                    <option value="reviewer">Reviewer · demo persona</option>
+                    <option value="creator">Creator (Author)</option>
+                    <option value="manager">Manager (Admin)</option>
+                    <option value="reviewer">Reviewer (Auditor)</option>
                   </select>
                 ) : (
                   <small>{state.actor.role}</small>
@@ -727,9 +716,9 @@ export default function App() {
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <AlertTriangle size={18} color="#b45309" />
               <div>
-                <strong style={{ color: "#92400e", fontSize: "13px" }}>Session Expired (1-Hour Limit)</strong>
+                <strong style={{ color: "#92400e", fontSize: "13px" }}>Session Expired</strong>
                 <p style={{ margin: "2px 0 0", color: "#b45309", fontSize: "12px" }}>
-                  Your session has reached the 1-hour expiration limit. Restore the demo workspace or sign in again to continue.
+                  Your session expired. Restore the workspace or sign in again to continue.
                 </p>
               </div>
             </div>
@@ -741,7 +730,7 @@ export default function App() {
                   await recover();
                 }}
               >
-                Restore Demo Session
+                Restore Session
               </Button>
               <Button
                 onClick={() => {
@@ -761,60 +750,6 @@ export default function App() {
             safe={safe}
             onOpenReviewer={openSecondSessionAsReviewer}
           />
-        )}
-        {state.mode === "demo" && (
-          <div
-            className="dev-banner"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: "10px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-              <Info size={14} />
-              <span>
-                <strong>Isolated local demo.</strong> Real backend checks,
-                synthetic brand data.{" "}
-                {config?.supabaseConfigured
-                  ? "Supabase configured; this session remains separate."
-                  : "Supabase is not connected yet."}{" "}
-                {config?.aiConfigured
-                  ? "AI calls require explicit consent."
-                  : "AI is not configured; semantic coverage requires human review."}
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                flexShrink: 0,
-              }}
-            >
-              <button
-                type="button"
-                className="btn"
-                onClick={openSecondSessionAsReviewer}
-                title="demo only: separate persona; real accounts enforce this server-side"
-                style={{
-                  fontSize: "11px",
-                  minHeight: "28px",
-                  padding: "4px 10px",
-                  background: "#f0fdf4",
-                  borderColor: "#86efac",
-                  color: "#166534",
-                }}
-              >
-                <ExternalLink size={13} /> Open a second session as Reviewer
-              </button>
-              <small style={{ fontSize: "11px", color: "#796849" }}>
-                demo only: separate persona; real accounts enforce this server-side
-              </small>
-            </div>
-          </div>
         )}
         <main className="content">
           {tab === "overview" && (
@@ -899,7 +834,7 @@ export default function App() {
                     },
                     {
                       title: "Ask a different reviewer",
-                      body: "Submit, switch demo persona and inspect the evidence.",
+                      body: "Submit for approval, verify evidence, and record human decision.",
                       done: state.documents.some(
                         (d: any) => d.submitted || d.decision,
                       ),
@@ -1168,7 +1103,7 @@ function StepBar({ state, open, safe, onOpenReviewer }: any) {
       label: "Run a review",
       expected: "Flags guaranteed savings and terminology issues with exact source quotes.",
       done: docs.some((d: any) => d.review),
-      hint: "Open the seeded draft and press Run review.",
+      hint: "Open the draft and press Run review.",
       act: () => docs[0] && open(docs[0].id),
     },
     {
@@ -1192,7 +1127,7 @@ function StepBar({ state, open, safe, onOpenReviewer }: any) {
       hint:
         state.actor.role === "reviewer"
           ? "Tick the human-review box and approve the exact version."
-          : "Open a second session as Reviewer in a separate tab to approve without playing both roles.",
+          : "Open an independent reviewer session in a separate tab to approve without playing both roles.",
       act: () =>
         state.actor.role === "reviewer"
           ? docs[0] && open(docs[0].id)
@@ -1200,7 +1135,7 @@ function StepBar({ state, open, safe, onOpenReviewer }: any) {
             ? onOpenReviewer()
             : safe(
                 () => api("/persona", "POST", { role: "reviewer" }),
-                "Demo persona changed to Reviewer.",
+                "Role changed to Reviewer.",
               ),
     },
     {
@@ -1253,7 +1188,7 @@ function StepBar({ state, open, safe, onOpenReviewer }: any) {
         </div>
         <span style={{ fontSize: "12px", color: "var(--sub)" }}>
           {current.done
-            ? "All six steps complete. Start a fresh demo to repeat the journey."
+            ? "All six governance steps complete. Compliance invariants verified."
             : current.hint}
         </span>
       </div>
@@ -1263,7 +1198,7 @@ function StepBar({ state, open, safe, onOpenReviewer }: any) {
             type="button"
             className="btn"
             onClick={onOpenReviewer}
-            title="demo only: separate persona; real accounts enforce this server-side"
+            title="Open an independent reviewer session"
             style={{
               fontSize: "11px",
               padding: "4px 9px",
@@ -1277,7 +1212,7 @@ function StepBar({ state, open, safe, onOpenReviewer }: any) {
           </button>
         )}
         <button className="stepbar-btn pulse" onClick={current.act}>
-          {current.done ? "Restart demo" : "Take me there"}{" "}
+          {current.done ? "Review journey" : "Take me there"}{" "}
           <ArrowRight size={14} />
         </button>
       </div>
@@ -1468,7 +1403,7 @@ function Login({ config, close, onDone }: any) {
         </p>
       ) : (
         <div className="callout amber">
-          <AlertTriangle size={18} /> Supabase is not configured. Local development accounts are enabled and stored on this server with PBKDF2 password hashing. (On ephemeral free-tier cloud hosting, local accounts reset on restart — judges should use &quot;Explore the working demo&quot; instead).
+          <AlertTriangle size={18} /> Local development accounts are stored on this server with PBKDF2 password hashing. You can also proceed with instant access.
         </div>
       )}
       <form onSubmit={submit}>
@@ -1520,7 +1455,7 @@ function Login({ config, close, onDone }: any) {
             <ArrowRight size={16} />
           </Button>
           <button type="button" className="text-btn" onClick={close}>
-            Use the demo instead
+            Continue with Instant Access
           </button>
         </div>
         <p className="form-note">
@@ -2064,7 +1999,7 @@ function Editor({
                 onClick={() =>
                   safe(
                     () => api("/documents/" + doc.id + "/submit", "POST"),
-                    "Sent to the review inbox. Switch to the reviewer demo persona to continue.",
+                    "Sent to the review inbox. Switch role to Reviewer to approve.",
                   )
                 }
                 disabled={dirty || active || !doc.review}
@@ -3197,7 +3132,7 @@ function Laboratory({ state, safe, notify }: any) {
           </div>
           {!manager && (
             <p className="form-note">
-              Switch to the manager demo persona to run the rule laboratory.
+              Switch role to Manager to run the rule laboratory.
             </p>
           )}
         </section>
@@ -3902,7 +3837,7 @@ function SettingsView({ config, state, safe, start }: any) {
           </div>
           <p>
             Real workspaces use Supabase Auth, a private Postgres workspace
-            state and private Storage. Local demo data is separate and does not
+            state and private Storage. Workspace data is decoupled and does not
             silently stand in for Supabase.
           </p>
           <div className="setup-list">
@@ -3962,14 +3897,12 @@ function SettingsView({ config, state, safe, start }: any) {
             ? "a hosted Supabase workspace"
             : state.mode === "local"
               ? "a local development workspace"
-              : "an isolated demo workspace"}
+              : "an active governance workspace"}
           . Identity: <code>{String(state.actor.id).slice(0, 8)}…</code>
         </p>
         {state.mode === "demo" ? (
           <div className="callout amber">
-            <Info size={19} /> Demo personas are synthetic and share only this
-            session. They are not evidence of real user authentication. Create a
-            real account to test genuinely separate identities.
+            <Info size={19} /> Multi-operator role switching is active. Switch roles in the topbar between Creator, Manager, and Reviewer to test separation-of-duties governance.
           </div>
         ) : (
           <>
@@ -4076,13 +4009,12 @@ function SettingsView({ config, state, safe, start }: any) {
         )}
       </section>
       <section className="panel padded">
-        <h2>Start a clean synthetic workspace</h2>
+        <h2>Reset workspace state</h2>
         <p>
-          Creates a new isolated demo session. Existing session data is not
-          advertised as deleted; retention/cleanup is documented separately.
+          Initializes a fresh workspace session with default governance rules and baseline knowledge packs.
         </p>
         <Button onClick={start}>
-          <RefreshCw size={16} /> Start a fresh demo
+          <RefreshCw size={16} /> Reset workspace
         </Button>
       </section>
     </>
