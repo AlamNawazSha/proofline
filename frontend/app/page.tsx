@@ -1382,17 +1382,19 @@ function Login({ config, close, onDone }: any) {
     [error, setError] = useState("");
   const local = mode.startsWith("local");
   const localSignin = mode === "local-login";
-  const signingUp = mode === "signup" || mode === "local-signup";
+  const isLocal = local || !hosted;
+  const isLocalSignin = isLocal && (localSignin || mode === "login");
+  const isSignupMode = mode === "signup" || mode === "local-signup";
   const submit = async (e: any) => {
     e.preventDefault();
     setError("");
     sb(true);
     try {
-      const path = local
-        ? localSignin
+      const path = isLocal
+        ? isLocalSignin
           ? "/account/login"
           : "/account/register"
-        : signingUp
+        : isSignupMode
           ? "/account/signup"
           : "/login";
       const result = await api(path, "POST", {
@@ -1407,11 +1409,11 @@ function Login({ config, close, onDone }: any) {
       const message = String(err.message || "");
       const exists =
         err.status === 409 || /already exists|already registered/i.test(message);
-      if (exists && signingUp) {
+      if (exists && isSignupMode) {
         // The account is already there — try the matching sign-in path once
         // with the credentials just typed instead of making the user hunt tabs.
         try {
-          await api(local ? "/account/login" : "/login", "POST", {
+          await api(isLocal ? "/account/login" : "/login", "POST", {
             email,
             password,
           });
@@ -1419,7 +1421,7 @@ function Login({ config, close, onDone }: any) {
           else location.reload();
           return;
         } catch {
-          setMode(local ? "local-login" : "login");
+          setMode(isLocal ? "local-login" : "login");
           setError(
             "That email already has an account. Enter its password and press Sign in.",
           );
@@ -1431,11 +1433,16 @@ function Login({ config, close, onDone }: any) {
       sb(false);
     }
   };
-  const tabs = [
-    ["signup", "Create account"],
-    ["login", "Sign in"],
-    [localSignin ? "local-signup" : "local-login", "Local dev account"],
-  ];
+  const tabs = hosted
+    ? [
+        ["signup", "Create account"],
+        ["login", "Sign in"],
+        [local ? mode : "local-signup", localSignin ? "Local dev sign in" : "Local dev account"],
+      ]
+    : [
+        ["local-signup", "Create account"],
+        ["local-login", "Sign in"],
+      ];
   return (
     <Modal title="Sign in or create an account" onClose={close}>
       <div className="auth-tabs">
@@ -1461,12 +1468,11 @@ function Login({ config, close, onDone }: any) {
         </p>
       ) : (
         <div className="callout amber">
-          <AlertTriangle size={18} /> Supabase is not configured, so hosted
-          accounts are unavailable. Local development accounts work without it.
+          <AlertTriangle size={18} /> Supabase is not configured. Local development accounts are enabled and stored on this server with PBKDF2 password hashing.
         </div>
       )}
       <form onSubmit={submit}>
-        {signingUp && !localSignin && (
+        {isSignupMode && (
           <Field label="Your name">
             <input
               autoFocus
@@ -1492,7 +1498,7 @@ function Login({ config, close, onDone }: any) {
         >
           <input
             type="password"
-            autoComplete={signingUp ? "new-password" : "current-password"}
+            autoComplete={isSignupMode ? "new-password" : "current-password"}
             required
             value={password}
             onChange={(e) => sp(e.target.value)}
@@ -1510,7 +1516,7 @@ function Login({ config, close, onDone }: any) {
             ) : (
               <ShieldCheck size={16} />
             )}
-            {signingUp && !localSignin ? "Create account" : "Sign in"}{" "}
+            {isSignupMode ? "Create account" : "Sign in"}{" "}
             <ArrowRight size={16} />
           </Button>
           <button type="button" className="text-btn" onClick={close}>
