@@ -105,7 +105,14 @@ async function api(path: string, method = "GET", data?: any) {
   try {
     result = await r.json();
   } catch {
-    result = { detail: `Unexpected response from the API (HTTP ${r.status}).` };
+    const isVercel =
+      typeof window !== "undefined" &&
+      window.location.hostname.includes("vercel.app");
+    const detail =
+      r.status === 404 && isVercel
+        ? "Backend API is not connected. In your Vercel Dashboard, go to Settings > Environment Variables, add API_INTERNAL_URL pointing to your deployed backend, and redeploy."
+        : `Unexpected response from the API (HTTP ${r.status}).`;
+    result = { detail };
   }
   if (r.ok && result && result.sessionToken) rememberSession(result.sessionToken);
   if (!r.ok && r.status === 401) {
