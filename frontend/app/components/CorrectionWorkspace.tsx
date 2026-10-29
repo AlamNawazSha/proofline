@@ -33,58 +33,33 @@ interface Finding {
 }
 
 interface CorrectionWorkspaceProps {
-  apiBase: string;
+  apiBase?: string;
   documentId?: string;
   initialText?: string;
   initialFindings?: Finding[];
   onRerunChecks?: (newText: string) => void;
+  onSaveDraft?: (newText: string) => void;
 }
 
 export default function CorrectionWorkspace({
-  apiBase,
+  apiBase = "",
   documentId = "DOC-DEMO-001",
-  initialText = `Proofline provides 100% unbreachable cloud security with guaranteed zero latency. Our platform holds active ISO-27001 and SOC-2 Type II certifications under certificate ISO-2023-SEC (issued Jan 2023). Monthly pricing starts at $49/mo per seat.`,
-  initialFindings = [
-    {
-      id: "FND-001",
-      claim: "100% unbreachable cloud security with guaranteed zero latency",
-      status: "CONTRADICTED",
-      severity: "CRITICAL",
-      policyRule: "RULE-002: Absolute Superlative Prohibition",
-      explanation: "Superlatives '100% unbreachable' and 'zero latency' violate governance rules. No technical system can guarantee zero latency.",
-      suggestedCorrection: "industry-leading cloud security with sub-millisecond median latency",
-      sourceDoc: "SRC-001 (Proofline Master Architecture Spec)",
-      evidencePassage: "Target architecture provides 99.9% uptime SLA with sub-millisecond p50 latency.",
-    },
-    {
-      id: "FND-002",
-      claim: "active ISO-27001 and SOC-2 Type II certifications under certificate ISO-2023-SEC (issued Jan 2023)",
-      status: "OUTDATED_SOURCE",
-      severity: "HIGH",
-      policyRule: "RULE-004: Active Certification Verification",
-      explanation: "Certificate ISO-2023-SEC expired on Dec 31, 2023. Current compliance requires active 2024/2025 audit certificate.",
-      suggestedCorrection: "SOC-2 Type II compliance under current active audit cycle (2024-2025)",
-      sourceDoc: "SRC-002 (Expired ISO Certificate)",
-      evidencePassage: "ISO-2023-SEC: Validity Period: Jan 01, 2023 to Dec 31, 2023. Status: EXPIRED.",
-    },
-    {
-      id: "FND-003",
-      claim: "Monthly pricing starts at $49/mo per seat",
-      status: "CONTRADICTED",
-      severity: "MEDIUM",
-      policyRule: "RULE-005: Verified Pricing & Currency Integrity",
-      explanation: "Master pricing schedule lists enterprise tier at $99/mo per seat, not $49/mo.",
-      suggestedCorrection: "Monthly pricing starts at $99/mo per seat as per Q4 schedule",
-      sourceDoc: "SRC-003 (Enterprise Master Pricing)",
-      evidencePassage: "Section 3.1: Standard seat license: $99 USD/month billed annually.",
-    },
-  ],
+  initialText = "",
+  initialFindings = [],
   onRerunChecks,
+  onSaveDraft,
 }: CorrectionWorkspaceProps) {
-  const [originalText] = useState(initialText);
+  const [originalText, setOriginalText] = useState(initialText);
   const [draftText, setDraftText] = useState(initialText);
   const [findings, setFindings] = useState<Finding[]>(initialFindings);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(initialFindings[0] || null);
+
+  React.useEffect(() => {
+    setOriginalText(initialText);
+    setDraftText(initialText);
+    setFindings(initialFindings);
+    setSelectedFinding(initialFindings[0] || null);
+  }, [initialText, initialFindings]);
   const [comments, setComments] = useState<Array<{ user: string; text: string; time: string }>>([
     {
       user: "Auditor (Sarah K.)",
@@ -169,6 +144,15 @@ export default function CorrectionWorkspace({
         </div>
 
         <div className="flex items-center gap-2">
+          {onSaveDraft && (
+            <button
+              onClick={() => onSaveDraft(draftText)}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-500/50 flex items-center gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5 text-emerald-300" /> Apply & Save Draft
+            </button>
+          )}
+
           {findings.length > 0 && (
             <button
               onClick={handleApplyAll}

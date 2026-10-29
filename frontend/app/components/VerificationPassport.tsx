@@ -96,16 +96,13 @@ export default function VerificationPassport({ api, receipts, documents }: Verif
     <div style={{ marginTop: "16px" }}>
       {/* Live Cryptographic Tamper Detection Demo */}
       <div className="panel" style={{ marginBottom: "26px", border: "1px solid #cbd5e1" }}>
-        <div
-          className="panel-heading"
-          style={{ background: "linear-gradient(90deg, #0f172a 0%, #1e293b 100%)", color: "#ffffff" }}
-        >
+        <div className="panel-heading">
           <div>
-            <h2 style={{ color: "#38bdf8" }}>
-              <ShieldCheck size={20} style={{ color: "#38bdf8" }} />
+            <h2>
+              <ShieldCheck size={20} style={{ color: "var(--teal)" }} />
               Live Cryptographic Tamper Detection Simulator
             </h2>
-            <p style={{ color: "#94a3b8" }}>
+            <p>
               Demonstrating bitwise document integrity binding using SHA-256 canonical fingerprinting and Ed25519 signatures.
             </p>
           </div>
@@ -113,7 +110,6 @@ export default function VerificationPassport({ api, receipts, documents }: Verif
             <button
               className="btn"
               onClick={resetOriginal}
-              style={{ background: "rgba(255,255,255,0.1)", color: "#ffffff", borderColor: "#475569" }}
             >
               <RotateCcw size={14} />
               Reset Original Text
@@ -121,7 +117,7 @@ export default function VerificationPassport({ api, receipts, documents }: Verif
             <button
               className="btn primary"
               onClick={simulateTamper}
-              style={{ background: "#e11d48", borderColor: "#be123c" }}
+              style={{ background: "#e11d48", borderColor: "#be123c", color: "#ffffff" }}
             >
               <Play size={14} />
               Simulate 1-Word Tamper
@@ -284,10 +280,10 @@ export default function VerificationPassport({ api, receipts, documents }: Verif
                           Receipt ID: {rcp.id}
                         </span>
                       </div>
-                      <strong style={{ fontSize: "16px", color: "#f8fafc", display: "block" }}>
+                      <strong style={{ fontSize: "16px", color: "var(--ink)", display: "block" }}>
                         {rcp.title || "Approved Release"}
                       </strong>
-                      <small style={{ color: "#94a3b8", display: "block", marginTop: "4px" }}>
+                      <small style={{ color: "var(--sub)", display: "block", marginTop: "4px" }}>
                         Reviewer: {rcp.reviewer} · Revision {rcp.revision} · Source Pack v{rcp.sourceVersion}
                       </small>
                     </div>
@@ -296,7 +292,6 @@ export default function VerificationPassport({ api, receipts, documents }: Verif
                       <button
                         className="btn"
                         onClick={() => copyToClipboard(JSON.stringify(rcp, null, 2), rcp.id)}
-                        style={{ background: "rgba(255,255,255,0.08)", color: "#ffffff", borderColor: "#475569" }}
                       >
                         {copiedId === rcp.id ? <Check size={14} /> : <Copy size={14} />}
                         {copiedId === rcp.id ? "Copied" : "Copy JSON"}
@@ -304,22 +299,22 @@ export default function VerificationPassport({ api, receipts, documents }: Verif
                     </div>
                   </div>
 
-                  <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", gap: "20px", flexWrap: "wrap", fontSize: "12px" }}>
+                  <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--line)", display: "flex", gap: "20px", flexWrap: "wrap", fontSize: "12px" }}>
                     <div>
-                      <span style={{ color: "#94a3b8", display: "block", fontSize: "10px", textTransform: "uppercase" }}>
+                      <span style={{ color: "var(--muted)", display: "block", fontSize: "10px", textTransform: "uppercase" }}>
                         SHA-256 FINGERPRINT
                       </span>
-                      <code style={{ color: "#38bdf8", background: "rgba(0,0,0,0.3)", fontSize: "11px" }}>
+                      <code style={{ color: "var(--teal)", background: "#f0f4f8", fontSize: "11px" }}>
                         {rcp.fingerprint}
                       </code>
                     </div>
 
                     {rcp.signature && (
                       <div>
-                        <span style={{ color: "#94a3b8", display: "block", fontSize: "10px", textTransform: "uppercase" }}>
+                        <span style={{ color: "var(--muted)", display: "block", fontSize: "10px", textTransform: "uppercase" }}>
                           ED25519 SIGNATURE
                         </span>
-                        <code style={{ color: "#a78bfa", background: "rgba(0,0,0,0.3)", fontSize: "11px" }}>
+                        <code style={{ color: "#7c3aed", background: "#f5f3ff", fontSize: "11px" }}>
                           {rcp.signature.slice(0, 32)}…
                         </code>
                       </div>

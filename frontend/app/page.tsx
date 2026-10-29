@@ -57,6 +57,7 @@ import PolicyStudio from "./components/PolicyStudio";
 import AuditExplorer from "./components/AuditExplorer";
 import IntegrationsAdmin from "./components/IntegrationsAdmin";
 import ApprovalCenter from "./components/ApprovalCenter";
+import CorrectionWorkspace from "./components/CorrectionWorkspace";
 
 let SESSION: string | null = null;
 try {
@@ -856,114 +857,114 @@ export default function App() {
               </div>
 
               {/* Proofline 2.0 Autonomous Governance Intelligence Deck */}
-              <div style={{ margin: "20px 0" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <div className="innovations-deck">
+                <div className="innovations-header">
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Sparkles size={16} color="#06b6d4" />
-                    <strong style={{ fontSize: "14px", color: "var(--foreground)", letterSpacing: "0.02em" }}>
+                    <Sparkles size={16} style={{ color: "var(--teal)" }} />
+                    <strong className="innovations-label">
                       PROOFLINE 2.0 GOVERNANCE INNOVATIONS
                     </strong>
-                    <span className="badge badge-cyan" style={{ fontSize: "10px" }}>ENTERPRISE SUITE</span>
+                    <span className="badge blue" style={{ fontSize: "10px", padding: "2px 7px" }}>ENTERPRISE SUITE</span>
                   </div>
-                  <span style={{ fontSize: "12px", color: "var(--sub)" }}>
+                  <span style={{ fontSize: "12px", color: "var(--muted)" }}>
                     Verifiable AI Compliance &amp; Proof Pipeline
                   </span>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px" }}>
+                <div className="innovations-grid">
                   <div
-                    className="card-glass"
-                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    className="innovation-card"
                     onClick={() => setTab("graph")}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(6, 182, 212, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#22d3ee" }}>
-                        <Network size={16} />
+                    <div className="innovation-icon-box" style={{ background: "#e0f2fe", color: "#0284c7" }}>
+                      <Network size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">Evidence Graph</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
                       </div>
-                      <div>
-                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Evidence Graph</strong>
-                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>Trace claims to sources &amp; cascade impact</span>
-                      </div>
+                      <span className="innovation-desc">Trace claims to sources &amp; cascade impact</span>
                     </div>
                   </div>
 
                   <div
-                    className="card-glass"
-                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    className="innovation-card"
                     onClick={() => setTab("verification")}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(16, 185, 129, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#34d399" }}>
-                        <Key size={16} />
+                    <div className="innovation-icon-box" style={{ background: "#ecfdf5", color: "#059669" }}>
+                      <Key size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">Verification Center</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
                       </div>
-                      <div>
-                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Verification Center</strong>
-                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>Ed25519 &amp; 1-word tamper detection demo</span>
-                      </div>
+                      <span className="innovation-desc">Ed25519 &amp; 1-word tamper detection demo</span>
                     </div>
                   </div>
 
                   <div
-                    className="card-glass"
-                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    className="innovation-card"
                     onClick={() => setTab("studio")}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(168, 85, 247, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#c084fc" }}>
-                        <FileCode size={16} />
+                    <div className="innovation-icon-box" style={{ background: "#faf5ff", color: "#9333ea" }}>
+                      <FileCode size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">Policy Studio</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
                       </div>
-                      <div>
-                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Policy Studio</strong>
-                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>Deterministic rules &amp; NL synthesizer</span>
-                      </div>
+                      <span className="innovation-desc">Deterministic rules &amp; NL synthesizer</span>
                     </div>
                   </div>
 
                   <div
-                    className="card-glass"
-                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    className="innovation-card"
                     onClick={() => setTab("risk")}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(245, 158, 11, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fbbf24" }}>
-                        <BarChart3 size={16} />
+                    <div className="innovation-icon-box" style={{ background: "#fffbeb", color: "#d97706" }}>
+                      <BarChart3 size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">Risk Intelligence</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
                       </div>
-                      <div>
-                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Risk Intelligence</strong>
-                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>5x5 heat map &amp; source expiration monitor</span>
-                      </div>
+                      <span className="innovation-desc">5x5 heat map &amp; source expiration monitor</span>
                     </div>
                   </div>
 
                   <div
-                    className="card-glass"
-                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    className="innovation-card"
                     onClick={() => setTab("benchmark")}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(244, 63, 94, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fb7185" }}>
-                        <ShieldAlert size={16} />
+                    <div className="innovation-icon-box" style={{ background: "#fff1f2", color: "#e11d48" }}>
+                      <ShieldAlert size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">Adversarial Lab</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
                       </div>
-                      <div>
-                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Adversarial Lab</strong>
-                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>12-test ground truth &amp; prompt injection test</span>
-                      </div>
+                      <span className="innovation-desc">12-test ground truth &amp; prompt injection test</span>
                     </div>
                   </div>
 
                   <div
-                    className="card-glass"
-                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    className="innovation-card"
                     onClick={() => setTab("audit")}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(59, 130, 246, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#60a5fa" }}>
-                        <History size={16} />
+                    <div className="innovation-icon-box" style={{ background: "#eff6ff", color: "#2563eb" }}>
+                      <History size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">Audit Explorer</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
                       </div>
-                      <div>
-                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Audit Explorer</strong>
-                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>Append-only SHA-256 chain verification</span>
-                      </div>
+                      <span className="innovation-desc">Append-only SHA-256 chain verification</span>
                     </div>
                   </div>
                 </div>

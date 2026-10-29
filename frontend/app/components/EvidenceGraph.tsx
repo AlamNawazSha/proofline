@@ -127,9 +127,9 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
                 padding: "4px 10px",
                 borderRadius: "20px",
                 border: "1px solid",
-                borderColor: filterType === t ? "#38bdf8" : "#475569",
-                background: filterType === t ? "#0369a1" : "rgba(255,255,255,0.05)",
-                color: filterType === t ? "#ffffff" : "#cbd5e1",
+                borderColor: filterType === t ? "var(--teal)" : "#cbd5e1",
+                background: filterType === t ? "var(--teal)" : "#ffffff",
+                color: filterType === t ? "#ffffff" : "#475569",
                 textTransform: "capitalize",
                 cursor: "pointer",
               }}
@@ -146,14 +146,14 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              background: "#0f172a",
-              border: "1px solid #334155",
+              background: "#ffffff",
+              border: "1px solid var(--line)",
               borderRadius: "6px",
               padding: "4px 10px",
               fontSize: "12px",
             }}
           >
-            <Search size={14} style={{ color: "#94a3b8" }} />
+            <Search size={14} style={{ color: "var(--muted)" }} />
             <input
               type="text"
               placeholder="Search graph nodes..."
@@ -163,7 +163,7 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
                 background: "transparent",
                 border: "none",
                 outline: "none",
-                color: "#f8fafc",
+                color: "var(--ink)",
                 fontSize: "12px",
                 width: "160px",
                 padding: 0,
@@ -171,12 +171,12 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
             />
           </div>
 
-          <div style={{ display: "flex", gap: "2px", background: "#0f172a", borderRadius: "6px", padding: "2px" }}>
+          <div style={{ display: "flex", gap: "2px", background: "#f1f5f9", border: "1px solid var(--line)", borderRadius: "6px", padding: "2px" }}>
             <button
               className="icon-btn"
               onClick={() => setZoom((z) => Math.min(1.4, z + 0.1))}
               title="Zoom In"
-              style={{ color: "#cbd5e1" }}
+              style={{ color: "var(--ink)" }}
             >
               <ZoomIn size={15} />
             </button>
@@ -184,7 +184,7 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
               className="icon-btn"
               onClick={() => setZoom((z) => Math.max(0.7, z - 0.1))}
               title="Zoom Out"
-              style={{ color: "#cbd5e1" }}
+              style={{ color: "var(--ink)" }}
             >
               <ZoomOut size={15} />
             </button>
@@ -308,16 +308,16 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
               {selectedNode.fullLabel || selectedNode.label}
             </h3>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "12px", color: "#cbd5e1" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "12px", color: "var(--ink)" }}>
               <div>
-                <span style={{ color: "#64748b", display: "block", fontSize: "11px" }}>NODE IDENTIFIER</span>
-                <code style={{ background: "#0f172a", color: "#38bdf8" }}>{selectedNode.id}</code>
+                <span style={{ color: "var(--muted)", display: "block", fontSize: "11px" }}>NODE IDENTIFIER</span>
+                <code style={{ background: "#f1f5f9", color: "#0284c7" }}>{selectedNode.id}</code>
               </div>
 
               {selectedNode.metadata?.text && (
                 <div>
-                  <span style={{ color: "#64748b", display: "block", fontSize: "11px" }}>PASSAGE EXCERPT</span>
-                  <div style={{ background: "#0f172a", padding: "8px 10px", borderRadius: "6px", lineHeight: 1.6, marginTop: "4px" }}>
+                  <span style={{ color: "var(--muted)", display: "block", fontSize: "11px" }}>PASSAGE EXCERPT</span>
+                  <div style={{ background: "#f8fafc", border: "1px solid var(--line)", padding: "8px 10px", borderRadius: "6px", lineHeight: 1.6, marginTop: "4px" }}>
                     “{selectedNode.metadata.text}”
                   </div>
                 </div>
@@ -325,21 +325,21 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
 
               {selectedNode.metadata?.trustLevel && (
                 <div>
-                  <span style={{ color: "#64748b", display: "block", fontSize: "11px" }}>TRUST DESIGNATION</span>
-                  <span style={{ fontWeight: 600, color: "#38bdf8" }}>{selectedNode.metadata.trustLevel}</span>
+                  <span style={{ color: "var(--muted)", display: "block", fontSize: "11px" }}>TRUST DESIGNATION</span>
+                  <span style={{ fontWeight: 600, color: "var(--teal)" }}>{selectedNode.metadata.trustLevel}</span>
                 </div>
               )}
 
               {selectedNode.metadata?.fingerprint && (
                 <div>
-                  <span style={{ color: "#64748b", display: "block", fontSize: "11px" }}>SHA-256 FINGERPRINT</span>
-                  <code style={{ background: "#0f172a", fontSize: "10px", color: "#10b981" }}>{selectedNode.metadata.fingerprint}</code>
+                  <span style={{ color: "var(--muted)", display: "block", fontSize: "11px" }}>SHA-256 FINGERPRINT</span>
+                  <code style={{ background: "#f1f5f9", fontSize: "10px", color: "#059669" }}>{selectedNode.metadata.fingerprint}</code>
                 </div>
               )}
 
               {/* Connected Relationships */}
-              <div style={{ marginTop: "12px", borderTop: "1px solid #334155", paddingTop: "12px" }}>
-                <span style={{ color: "#64748b", display: "block", fontSize: "11px", marginBottom: "6px" }}>CONNECTED EDGES</span>
+              <div style={{ marginTop: "12px", borderTop: "1px solid var(--line)", paddingTop: "12px" }}>
+                <span style={{ color: "var(--muted)", display: "block", fontSize: "11px", marginBottom: "6px" }}>CONNECTED EDGES</span>
                 {graphData.edges
                   .filter((e) => e.source === selectedNode.id || e.target === selectedNode.id)
                   .map((e) => (
@@ -347,8 +347,9 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
                       key={e.id}
                       style={{
                         fontSize: "11px",
-                        padding: "4px 8px",
-                        background: "#0f172a",
+                        padding: "6px 8px",
+                        background: "#f8fafc",
+                        border: "1px solid var(--line)",
                         borderRadius: "4px",
                         marginBottom: "4px",
                         display: "flex",
@@ -356,7 +357,7 @@ export default function EvidenceGraph({ api, onSelectDocument }: EvidenceGraphPr
                         gap: "6px",
                       }}
                     >
-                      <ArrowRight size={12} style={{ color: "#38bdf8" }} />
+                      <ArrowRight size={12} style={{ color: "var(--teal)" }} />
                       <span>{e.label || e.type}</span>
                       <span style={{ color: "#64748b", marginLeft: "auto" }}>
                         {e.source === selectedNode.id ? "→ " + e.target.slice(0, 8) : "← " + e.source.slice(0, 8)}

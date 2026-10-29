@@ -40,12 +40,13 @@ interface VerificationReport {
 }
 
 interface AuditExplorerProps {
-  apiBase: string;
-  initialEvents?: AuditEvent[];
+  apiBase?: string;
+  api?: (path: string, method?: string, data?: any) => Promise<any>;
+  initialEvents?: any[];
 }
 
-export default function AuditExplorer({ apiBase, initialEvents = [] }: AuditExplorerProps) {
-  const [events, setEvents] = useState<AuditEvent[]>(initialEvents);
+export default function AuditExplorer({ apiBase = "", api, initialEvents = [] }: AuditExplorerProps) {
+  const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAction, setFilterAction] = useState("ALL");
@@ -53,32 +54,60 @@ export default function AuditExplorer({ apiBase, initialEvents = [] }: AuditExpl
   const [verifyReport, setVerifyReport] = useState<VerificationReport | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
 
+  const normalizeEvents = (rawList: any[]) => {
+    return rawList.map((ev: any) => ({
+      id: ev.id,
+      sequence: ev.seq !== undefined ? ev.seq : ev.sequence,
+      timestamp: ev.at || ev.timestamp,
+      actor: typeof ev.actor === "object" ? ev.actor?.name : ev.actor,
+      actorRole: ev.actorRole || ev.actor?.role,
+      action: ev.action,
+      resource: ev.resource,
+      hash: ev.eventHash || ev.hash,
+      prev_hash: ev.prevHash || ev.prev_hash,
+      details: ev.extra || { detail: ev.detail },
+      detail: ev.detail || (typeof ev.details === "string" ? ev.details : ""),
+    }));
+  };
+
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/api/events`);
-      if (res.ok) {
-        const json = await res.json();
-        // reverse to show newest first
-        setEvents(Array.isArray(json) ? json.slice().reverse() : []);
+      let json: any[];
+      if (api) {
+        json = await api("/events");
+      } else {
+        const res = await fetch(`${apiBase}/api/events`, { credentials: "include" });
+        if (res.ok) json = await res.json();
+        else json = initialEvents;
       }
+      const rawList = Array.isArray(json) ? json : initialEvents;
+      setEvents(normalizeEvents(rawList));
     } catch {
-      // fallback to initial
+      setEvents(normalizeEvents(initialEvents));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (initialEvents && initialEvents.length > 0) {
+      setEvents(normalizeEvents(initialEvents));
+    }
     fetchEvents();
-  }, []);
+  }, [initialEvents]);
 
   const handleVerifyLedger = async () => {
     setVerifying(true);
     try {
-      const res = await fetch(`${apiBase}/api/audit/verify`);
-      if (res.ok) {
-        const data = await res.json();
+      let data: any;
+      if (api) {
+        data = await api("/audit/verify");
+      } else {
+        const res = await fetch(`${apiBase}/api/audit/verify`, { credentials: "include" });
+        if (res.ok) data = await res.json();
+      }
+      if (data) {
         setVerifyReport(data);
       }
     } catch {
@@ -94,8 +123,22 @@ export default function AuditExplorer({ apiBase, initialEvents = [] }: AuditExpl
     }
   };
 
-  const handleExport = (format: "json" | "csv") => {
-    window.open(`${apiBase}/api/audit/export?format=${format}`, "_blank");
+  const handleExport = async (format: "json" | "csv") => {
+    try {
+      const res = await fetch(`/api/audit/export?format=${format}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `proofline-audit-ledger.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert("Failed to export audit ledger: " + e.message);
+    }
   };
 
   const filteredEvents = events.filter((e) => {

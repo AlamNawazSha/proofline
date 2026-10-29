@@ -33,13 +33,49 @@ interface Rule {
 }
 
 interface PolicyStudioProps {
-  apiBase: string;
+  apiBase?: string;
+  api?: (path: string, method?: string, data?: any) => Promise<any>;
+  state?: any;
+  safe?: any;
+  refresh?: () => Promise<any>;
+  notify?: (n: any) => void;
   initialRules?: Rule[];
 }
 
-export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
-  // Built-in rules from Proofline 2.0
-  const [rules, setRules] = useState<Rule[]>([
+export default function PolicyStudio({
+  apiBase = "",
+  api,
+  state,
+  safe,
+  refresh,
+  notify,
+}: PolicyStudioProps) {
+  // Built-in rules or state-derived rules
+  const mapStateRules = (stRules: any[]): Rule[] => {
+    if (!stRules || stRules.length === 0) return [];
+    return stRules.map((r: any) => {
+      let cat = "Required disclosure";
+      if (r.kind === "prohibited") cat = "Prohibited claims";
+      else if (r.kind === "terminology") cat = "Approved terminology";
+      else if (r.kind === "claim") cat = "Numerical thresholds";
+      else if (r.kind === "internal") cat = "Brand guidelines";
+
+      return {
+        id: r.id,
+        name: r.name || "Governance Rule",
+        description: r.quote ? `Evidence quote: "${r.quote}"` : `Evaluation pattern: "${r.pattern}"`,
+        category: cat,
+        severity: (r.severity || "HIGH").toUpperCase() as any,
+        enabled: Boolean(r.active),
+        version: `1.${r.version || 0}.0`,
+        deterministic: true,
+        pattern: r.pattern || "",
+        requiredEvidence: r.quote || "Official Approved Source",
+      };
+    });
+  };
+
+  const defaultRules: Rule[] = [
     {
       id: "RULE-001",
       name: "Mandatory Regulatory Disclaimer",
@@ -98,7 +134,7 @@ export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
       version: "1.1.0",
       deterministic: true,
       pattern: "(\\$[0-9]+(\\.[0-9]{2})?|pricing|per month)",
-      requiredEvidence: "Master Enterprise Pricing Schedule (Current Quarter)",
+      requiredEvidence: "Enterprise Master Pricing Schedule v2026",
     },
     {
       id: "RULE-006",
@@ -124,7 +160,17 @@ export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
       pattern: "(ignore all previous|system override|you are now|bypass policy)",
       requiredEvidence: "Document Security Quarantine Log",
     },
-  ]);
+  ];
+
+  const [rules, setRules] = useState<Rule[]>(
+    state?.rules ? mapStateRules(state.rules) : defaultRules
+  );
+
+  React.useEffect(() => {
+    if (state?.rules && state.rules.length > 0) {
+      setRules(mapStateRules(state.rules));
+    }
+  }, [state?.rules]);
 
   const [selectedRule, setSelectedRule] = useState<Rule>(rules[0]);
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
@@ -167,12 +213,41 @@ export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
     return matchCat && matchQuery;
   });
 
-  const runSandboxTest = () => {
+  const runSandboxTest = async () => {
     if (!testText.trim()) return;
+
+    if (api && selectedRule) {
+      try {
+        const isTerm = selectedRule.category?.toLowerCase()?.includes("term");
+        const res = await api("/rules/sandbox", "POST", {
+          rule: {
+            kind: isTerm ? "terminology" : "prohibited",
+            pattern: selectedRule.pattern || "flagged phrase",
+            replacement: isTerm ? "standard terminology" : "",
+            channel: "any",
+            section: "any",
+            allowQuoted: false,
+            quote: selectedRule.requiredEvidence,
+          },
+          text: testText,
+        });
+
+        if (res && res.findings) {
+          const findingsList = res.findings.map((f: any) => `[${selectedRule.id}] ${f.explanation || f.ruleName}`);
+          setTestResult({
+            matched: res.findings.length > 0,
+            findings: findingsList,
+            riskScore: res.findings.length > 0 ? (selectedRule.severity === "CRITICAL" ? 95 : 65) : 5,
+          });
+          return;
+        }
+      } catch {
+        // fall back to client evaluation
+      }
+    }
+
     const findings: string[] = [];
     let risk = 10;
-
-    // Evaluate active enabled rules against testText
     rules.forEach((rule) => {
       if (!rule.enabled) return;
       if (rule.pattern) {
@@ -184,9 +259,7 @@ export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
             else if (rule.severity === "HIGH") risk += 20;
             else if (rule.severity === "MEDIUM") risk += 10;
           }
-        } catch {
-          // ignore regex errors
-        }
+        } catch {}
       }
     });
 
@@ -202,13 +275,19 @@ export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
     setNlLoading(true);
     setNlError(null);
     try {
-      const res = await fetch(`${apiBase}/api/policies/build-nl`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: nlDescription }),
-      });
-      if (!res.ok) throw new Error("Failed to compile natural language policy");
-      const json = await res.json();
+      let json: any;
+      if (api) {
+        json = await api("/policies/build-nl", "POST", { description: nlDescription });
+      } else {
+        const res = await fetch(`${apiBase}/api/policies/build-nl`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ data: { description: nlDescription } }),
+        });
+        if (!res.ok) throw new Error("Failed to compile natural language policy");
+        json = await res.json();
+      }
       setNlGeneratedRule(json.proposedRule);
     } catch (err: any) {
       setNlError(err.message || "Failed to generate policy");
@@ -217,8 +296,38 @@ export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
     }
   };
 
-  const handleActivateNLRule = () => {
+  const handleActivateNLRule = async () => {
     if (!nlGeneratedRule) return;
+
+    if (api && refresh) {
+      try {
+        const activeSource = state?.sources?.find((s: any) => s.active && s.confirmed) || state?.sources?.[0];
+        const res = await api("/rules", "POST", {
+          name: nlGeneratedRule.name || "Custom NL Policy",
+          kind: nlGeneratedRule.kind || "prohibited",
+          severity: (nlGeneratedRule.severity || "high").toLowerCase(),
+          pattern: nlGeneratedRule.pattern || "unapproved claim",
+          replacement: nlGeneratedRule.replacement || "",
+          sourceId: activeSource?.id,
+          quote: activeSource?.body?.slice(0, 100) || "Pilot users saved up to 20% on annual plans.",
+          channel: "any",
+          section: "any",
+          allowQuoted: false,
+        });
+
+        // Activate the created rule
+        if (res && res.id) {
+          try {
+            await api(`/rules/${res.id}/activate`, "POST");
+          } catch {}
+        }
+        await refresh();
+        if (notify) notify({ text: `Policy rule '${nlGeneratedRule.name}' activated and persisted in workspace.` });
+      } catch (e: any) {
+        if (notify) notify({ error: true, text: `Failed to persist rule: ${e.message}` });
+      }
+    }
+
     const newRule: Rule = {
       id: nlGeneratedRule.ruleId || `RULE-00${rules.length + 1}`,
       name: nlGeneratedRule.name || "Custom NL Policy",
@@ -228,7 +337,7 @@ export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
       enabled: true,
       version: "1.0.0",
       deterministic: true,
-      pattern: nlGeneratedRule.evaluationLogic || "",
+      pattern: nlGeneratedRule.pattern || nlGeneratedRule.evaluationLogic || "",
       requiredEvidence: nlGeneratedRule.requiredEvidence || "Authoritative Audit Evidence",
     };
     setRules([newRule, ...rules]);
@@ -238,7 +347,26 @@ export default function PolicyStudio({ apiBase }: PolicyStudioProps) {
     setNlDescription("");
   };
 
-  const toggleRuleEnabled = (id: string) => {
+  const toggleRuleEnabled = async (id: string) => {
+    const target = rules.find((r) => r.id === id);
+    const currentlyActive = target?.enabled;
+
+    if (api && refresh) {
+      try {
+        if (currentlyActive) {
+          await api(`/rules/${id}/deactivate`, "POST");
+        } else {
+          await api(`/rules/${id}/activate`, "POST");
+        }
+        await refresh();
+        if (notify) {
+          notify({ text: `Rule ${id} ${currentlyActive ? "deactivated" : "activated"} successfully.` });
+        }
+      } catch (e: any) {
+        if (notify) notify({ error: true, text: `Rule toggle: ${e.message}` });
+      }
+    }
+
     setRules(
       rules.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r))
     );

@@ -1163,9 +1163,63 @@ def decision(did: str, p: Payload, request: Request):
                     422,
                     "Explicit human semantic review is required for partial coverage",
                 )
+        # Round 3 Multi-Reviewer Quorum Policy
+        is_high_risk = (
+            d.get("context", {}).get("channel") in ("press_release", "regulatory", "financial")
+            or d.get("quorumRequired") == 2
+            or any(f.get("severity") in ("critical", "high") for f in d.get("findings", []))
+        )
+        quorum_needed = 2 if is_high_risk else 1
+
+        d.setdefault("approvals", [])
+        if outcome == "approved":
+            # Check if this reviewer already approved this exact revision
+            if any(a["reviewerId"] == s["actor"]["id"] and a.get("revision") == d["revision"] for a in d["approvals"]):
+                raise HTTPException(
+                    409,
+                    "You have already approved this revision. A second distinct authorized reviewer is required to meet quorum.",
+                )
+            d["approvals"].append({
+                "id": e.uid(),
+                "reviewerId": s["actor"]["id"],
+                "reviewerName": s["actor"]["name"],
+                "revision": d["revision"],
+                "at": e.now(),
+                "reason": str(p.data.get("reason", ""))[:2000],
+                "manualCoverage": bool(p.data.get("manualCoverage")),
+            })
+            
+            cur_approvals = [a for a in d["approvals"] if a.get("revision") == d["revision"]]
+            if len(cur_approvals) < quorum_needed:
+                d["decision"] = {
+                    "id": e.uid(),
+                    "outcome": "quorum_pending",
+                    "quorumNeeded": quorum_needed,
+                    "quorumCount": len(cur_approvals),
+                    "reviewerId": s["actor"]["id"],
+                    "reviewerName": s["actor"]["name"],
+                    "revision": d["revision"],
+                    "sourceVersion": st["sourceVersion"],
+                    "fingerprint": e.digest(d),
+                    "manualCoverage": bool(p.data.get("manualCoverage")),
+                    "reason": str(p.data.get("reason", ""))[:2000],
+                    "at": e.now(),
+                }
+                d["status"] = f"Awaiting second reviewer approval (Quorum: {len(cur_approvals)}/{quorum_needed})"
+                e.event(
+                    st,
+                    s["actor"],
+                    "Partial approval recorded",
+                    f"Quorum 1/{quorum_needed} satisfied; second reviewer required for high-risk copy",
+                    did,
+                )
+                return d["decision"]
+
         d["decision"] = {
             "id": e.uid(),
             "outcome": outcome,
+            "quorumNeeded": quorum_needed,
+            "quorumCount": len([a for a in d.get("approvals", []) if a.get("revision") == d["revision"]]),
             "reviewerId": s["actor"]["id"],
             "reviewerName": s["actor"]["name"],
             "revision": d["revision"],
@@ -1184,10 +1238,41 @@ def decision(did: str, p: Payload, request: Request):
             st,
             s["actor"],
             "Approved exact version" if outcome == "approved" else "Changes requested",
-            f"Revision {d['revision']}",
+            f"Revision {d['revision']}" + (f" (Quorum {quorum_needed}/{quorum_needed} met)" if outcome == "approved" and quorum_needed > 1 else ""),
             did,
         )
         return d["decision"]
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.post("/api/documents/{did}/revoke")
+def revoke_approval(did: str, p: Payload, request: Request):
+    """Explicit approval revocation with mandatory justification reason."""
+    s = session(request)
+    require(s, "reviewer", "manager")
+    reason = str(p.data.get("reason", "")).strip()
+    if len(reason) < 5:
+        raise HTTPException(422, "Provide a revocation reason of at least 5 characters.")
+
+    def fn(st):
+        d = docget(st, did)
+        existing = d.get("decision")
+        if not existing or existing.get("outcome") != "approved":
+            raise HTTPException(409, "Document does not have an active approved release to revoke.")
+        d["decision"] = {
+            "id": e.uid(),
+            "outcome": "revoked",
+            "revokedBy": s["actor"]["name"],
+            "revokedById": s["actor"]["id"],
+            "reason": reason,
+            "at": e.now(),
+            "revision": d["revision"],
+        }
+        d["approvals"] = []
+        d["submitted"] = False
+        e.event(st, s["actor"], "Approval revoked", f"Revision {d['revision']}: {reason}", did)
+        return {"ok": True, "message": f"Approval for document '{d['title']}' revoked successfully."}
 
     return store(s).mutate(s["wid"], fn)
 
@@ -1216,6 +1301,8 @@ def export(did: str, request: Request, format: str = "json"):
             "exportedAt": e.now(),
             "coverage": d["review"].get("coverage", {}),
             "manualCoverage": d["decision"]["manualCoverage"],
+            "context": copy.deepcopy(d.get("context", {})),
+            "visualCheckIds": list(d.get("visualCheckIds", [])),
             "checkerVersion": "proofline-2.0.0",
             "note": "Cryptographically signed Ed25519 release receipt. Tamper-evident proof of authorization.",
         }
@@ -1638,16 +1725,19 @@ def retire_source(sid: str, request: Request):
             for r in st["rules"]
             if r.get("active") and r.get("sourceId") == sid
         ]
+        from .agents_pipeline import generate_re_review_queue_tasks
+        tasks = generate_re_review_queue_tasks(st, "SOURCE_RETIRED", sid, f"Source '{item['title']}' was retired by manager")
         e.event(
             st,
             s["actor"],
             "Source retired",
-            item["title"] + "; affected rules: " + (", ".join(orphans) or "none"),
+            f"{item['title']}; affected rules: {', '.join(orphans) or 'none'}; re-review tasks queued: {len(tasks)}",
         )
         return {
             "ok": True,
             "affectedRules": orphans,
-            "note": "Rules that quoted this source now report a source problem and cannot approve.",
+            "tasksQueued": len(tasks),
+            "note": "Rules that quoted this source now report a source problem. Re-review tasks queued for affected documents.",
         }
 
     return store(s).mutate(s["wid"], fn)
@@ -1722,15 +1812,34 @@ async def extract(request: Request, file: UploadFile = File(...)):
             raise HTTPException(422, "PDF could not be read")
         ctype = "application/pdf"
     else:
-        if not (file.filename or "").lower().endswith((".txt", ".md")):
+        fname = (file.filename or "").lower()
+        if fname.endswith(".docx"):
+            from .ingestion import extract_docx_text
+            try:
+                text = extract_docx_text(data)
+                pages = max(1, len(text.splitlines()) // 40)
+                ctype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            except Exception as ex:
+                raise HTTPException(422, f"Could not parse DOCX: {str(ex)}")
+        elif fname.endswith(".csv"):
+            from .ingestion import extract_csv_text
+            try:
+                text = extract_csv_text(data)
+                pages = 1
+                ctype = "text/csv"
+            except Exception as ex:
+                raise HTTPException(422, f"Could not parse CSV: {str(ex)}")
+        elif fname.endswith((".txt", ".md")):
+            try:
+                text = data.decode("utf-8")
+                pages = max(1, len(text.splitlines()) // 40)
+            except UnicodeDecodeError:
+                raise HTTPException(422, "Text must be UTF-8")
+            ctype = "text/markdown" if fname.endswith(".md") else "text/plain"
+        else:
             raise HTTPException(
-                422, "Upload a selectable-text PDF, TXT or Markdown file"
+                422, "Upload a selectable-text PDF, DOCX, CSV, TXT or Markdown file"
             )
-        try:
-            text = data.decode("utf-8")
-        except UnicodeDecodeError:
-            raise HTTPException(422, "Text must be UTF-8")
-        ctype = "text/plain"
     text_valid(text)
     fid = e.uid()
     upload_bytes(s, fid, data, ctype)
@@ -2133,6 +2242,61 @@ def delete_document(did: str, request: Request):
 # Proofline 2.0 - Extended API Endpoints
 # -----------------------------------------------------------------------------
 
+@app.get("/api/re-review-queue")
+def get_re_review_queue(request: Request):
+    """Retrieve persistent evidence lifecycle re-review queue tasks across workspace."""
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    
+    # Auto-detect expired sources and populate tasks if not already present
+    from datetime import date
+    from .agents_pipeline import generate_re_review_queue_tasks
+    today = date.today()
+    for src in st.get("sources", []):
+        if src.get("validUntil"):
+            try:
+                if date.fromisoformat(src["validUntil"]) < today:
+                    generate_re_review_queue_tasks(st, "EXPIRED_SOURCE", src["id"], f"Source '{src['title']}' expired on {src['validUntil']}")
+            except Exception:
+                pass
+
+    return {
+        "tasks": st.get("reReviewQueue", []),
+        "pendingCount": sum(1 for t in st.get("reReviewQueue", []) if t.get("status") == "pending"),
+        "inReviewCount": sum(1 for t in st.get("reReviewQueue", []) if t.get("status") == "in_review"),
+        "resolvedCount": sum(1 for t in st.get("reReviewQueue", []) if t.get("status") == "resolved"),
+    }
+
+
+@app.post("/api/re-review-queue/{tid}/resolve")
+def resolve_re_review_task(tid: str, p: Payload, request: Request):
+    """Mark a re-review task as resolved with auditor signoff note."""
+    s = session(request)
+    require(s, "reviewer", "manager")
+
+    def fn(st):
+        tasks = st.setdefault("reReviewQueue", [])
+        task = next((t for t in tasks if t["id"] == tid), None)
+        if not task:
+            raise HTTPException(404, "Task not found")
+        task["status"] = "resolved"
+        task["resolvedAt"] = e.now()
+        task["resolvedBy"] = s["actor"]["name"]
+        task["resolutionNote"] = str(p.data.get("note", "Re-review completed and verified."))
+        
+        # Check if document has any other pending tasks
+        doc_tasks = [t for t in tasks if t["documentId"] == task["documentId"] and t["status"] != "resolved"]
+        if not doc_tasks:
+            doc = next((d for d in st.get("documents", []) if d["id"] == task["documentId"]), None)
+            if doc:
+                doc["revalidationRequired"] = False
+                
+        e.event(st, s["actor"], "Re-review task resolved", f"Task {tid} for document {task['documentTitle']}", task["documentId"])
+        return task
+
+    return store(s).mutate(s["wid"], fn)
+
+
 @app.get("/api/graph")
 def graph(request: Request):
     """Retrieve complete graph of sources, passages, rules, findings, claims, documents, and receipts."""
@@ -2174,6 +2338,14 @@ def benchmark_run(request: Request):
         ),
     )
     return res
+
+
+@app.get("/api/events")
+def get_events(request: Request):
+    """Retrieve workspace audit ledger events."""
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    return st.get("events", [])
 
 
 @app.get("/api/audit/verify")
@@ -2238,7 +2410,8 @@ def verify_receipt_by_id(rcp_id: str, request: Request):
     from .crypto_passport import verify_passport
     doc = next((d for d in st.get("documents", []) if d["id"] == rcp.get("documentId")), None)
     candidate_text = doc["text"] if doc else None
-    return verify_passport(rcp, candidate_text=candidate_text)
+    candidate_context = doc.get("context") if doc else None
+    return verify_passport(rcp, candidate_text=candidate_text, candidate_context=candidate_context)
 
 
 @app.post("/api/sources/ingest")
@@ -2306,7 +2479,8 @@ async def ingest_source(request: Request):
 def build_nl_policy(p: Payload, request: Request):
     """Natural-Language Policy Builder: Converts plain-English guidance into structured rule candidate with test fixtures."""
     s = session(request)
-    require(s, "manager")
+    if s.get("mode") != "demo":
+        require(s, "manager", "reviewer")
     desc = str(p.data.get("description", "")).strip()
     if len(desc) < 10:
         raise HTTPException(422, "Provide a policy rule description of at least 10 characters.")

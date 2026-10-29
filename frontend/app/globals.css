@@ -123,17 +123,18 @@
   color: #475569;
 }
 
-/* Presentation Demo Step Banner */
+/* Presentation Demo Step Banner - Light Theme */
 .presentation-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
-  color: #f8fafc;
+  background: #ffffff;
+  color: var(--ink);
   padding: 10px 28px;
   font-size: 12px;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   flex-wrap: wrap;
 }
 .presentation-steps {
@@ -146,46 +147,47 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
   font-size: 11px;
   cursor: pointer;
   transition: all 0.15s ease;
-  border: 1px solid transparent;
+  border: 1px solid #e2e8f0;
 }
 .presentation-step:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
+  background: #e2e8f0;
+  color: var(--ink);
 }
 .presentation-step.active {
-  background: #0891b2;
+  background: var(--teal);
   color: #ffffff;
   font-weight: 600;
-  border-color: #38bdf8;
-  box-shadow: 0 0 12px rgba(8, 145, 178, 0.5);
+  border-color: var(--teal);
+  box-shadow: 0 1px 4px rgba(8, 127, 121, 0.3);
 }
 
-/* Evidence Graph View */
+/* Evidence Graph View - Light Theme */
 .graph-container {
   display: flex;
   flex-direction: column;
-  background: #0f172a;
-  border-radius: 12px;
-  border: 1px solid #334155;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid var(--line);
   overflow: hidden;
   height: 640px;
   position: relative;
+  box-shadow: var(--shadow);
 }
 .graph-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 18px;
-  background: #1e293b;
-  border-bottom: 1px solid #334155;
-  color: #f1f5f9;
+  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
   z-index: 10;
   flex-wrap: wrap;
   gap: 10px;
@@ -194,7 +196,8 @@
   flex: 1;
   position: relative;
   overflow: auto;
-  background: radial-gradient(#1e293b 1px, transparent 1px);
+  background: #f8fafc;
+  background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
   background-size: 24px 24px;
   padding: 30px;
 }
@@ -205,25 +208,25 @@
   align-items: start;
 }
 .graph-node-card {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #ffffff;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px;
-  color: #f8fafc;
+  color: var(--ink);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 .graph-node-card:hover {
-  border-color: #38bdf8;
+  border-color: var(--teal);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(6, 182, 212, 0.25);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 .graph-node-card.selected {
-  border-color: #06b6d4;
-  outline: 2px solid #06b6d4;
-  background: #172554;
+  border-color: var(--teal);
+  outline: 2px solid var(--teal);
+  background: #f0fdfa;
 }
 .graph-node-card[data-type="source"] { border-left: 4px solid #3b82f6; }
 .graph-node-card[data-type="passage"] { border-left: 4px solid #06b6d4; }
@@ -237,13 +240,13 @@
   right: 0;
   bottom: 0;
   width: 340px;
-  background: #1e293b;
-  border-left: 1px solid #334155;
+  background: #ffffff;
+  border-left: 1px solid var(--line);
   padding: 20px;
-  color: #f8fafc;
+  color: var(--ink);
   overflow-y: auto;
   z-index: 20;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.06);
 }
 
 /* Side-by-Side Document Correction Workspace */
@@ -326,16 +329,16 @@
 .cell-low { background: #dcfce7; color: #166534; border: 1px solid #4ade80; }
 .cell-info { background: #e0f2fe; color: #0369a1; border: 1px solid #38bdf8; }
 
-/* Cryptographic Approval Passport Card */
+/* Cryptographic Approval Passport Card - Light Theme */
 .passport-card {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  color: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #334155;
+  background: #ffffff;
+  color: var(--ink);
+  border-radius: 10px;
+  border: 1px solid var(--line);
   padding: 24px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.25);
+  box-shadow: var(--shadow);
 }
 .passport-card::before {
   content: "";
@@ -344,16 +347,16 @@
   right: 0;
   width: 180px;
   height: 180px;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(8, 127, 121, 0.08) 0%, transparent 70%);
   pointer-events: none;
 }
 .passport-signature-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(6, 182, 212, 0.15);
-  border: 1px solid #06b6d4;
-  color: #38bdf8;
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
+  color: #0891b2;
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 11px;
@@ -422,3 +425,134 @@
   width: 960px;
   max-width: 95vw;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Proofline 2.0 Governance Innovations - Shared Native UI & Light Theme       */
+/* -------------------------------------------------------------------------- */
+
+.innovations-deck {
+  margin: 26px 0 24px;
+}
+.innovations-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.innovations-label {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.innovations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+.innovation-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+}
+.innovation-card:hover {
+  border-color: #b5c4cf;
+  background: #fafcfc;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(24, 42, 64, 0.08);
+}
+.innovation-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.innovation-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+  display: block;
+}
+.innovation-arrow {
+  color: var(--muted);
+  transition: transform 0.18s ease, color 0.18s ease;
+  flex-shrink: 0;
+}
+.innovation-card:hover .innovation-arrow {
+  transform: translateX(3px);
+  color: var(--teal);
+}
+.innovation-desc {
+  font-size: 12px;
+  color: var(--sub);
+  display: block;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* Card-glass & Shared Components Light Theme Overrides */
+.card-glass {
+  background: #ffffff !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow) !important;
+  color: var(--ink) !important;
+}
+.card-glass h2, .card-glass h3, .card-glass strong {
+  color: var(--ink) !important;
+}
+.card-glass p {
+  color: var(--sub) !important;
+}
+.card-glass .text-white {
+  color: var(--ink) !important;
+}
+.card-glass .text-slate-200, .card-glass .text-slate-300, .card-glass .text-slate-400 {
+  color: var(--sub) !important;
+}
+.card-glass .text-slate-500 {
+  color: var(--muted) !important;
+}
+.card-glass .bg-slate-900, .card-glass .bg-slate-950, .card-glass .bg-slate-800 {
+  background-color: #f8fafc !important;
+  color: var(--ink) !important;
+}
+.card-glass .border-slate-700, .card-glass .border-slate-800, .card-glass .border-slate-600 {
+  border-color: var(--line) !important;
+}
+.card-glass table {
+  color: var(--ink) !important;
+}
+.card-glass thead {
+  background: #f1f5f9 !important;
+  color: var(--ink) !important;
+}
+.card-glass thead th {
+  color: #475569 !important;
+}
+.card-glass tbody tr {
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
+}
+.card-glass tbody tr:hover {
+  background: #f8fafc !important;
+}
+.card-glass input, .card-glass textarea, .card-glass select {
+  background: #ffffff !important;
+  color: var(--ink) !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
