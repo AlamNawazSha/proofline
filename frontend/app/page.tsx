@@ -42,7 +42,21 @@ import {
   MoreHorizontal,
   Clipboard,
   Trash2,
+  Network,
+  FileCode,
+  Radio,
+  Sliders,
+  ShieldAlert,
+  Key,
 } from "lucide-react";
+import EvidenceGraph from "./components/EvidenceGraph";
+import RiskIntelligence from "./components/RiskIntelligence";
+import VerificationPassport from "./components/VerificationPassport";
+import AdversarialLab from "./components/AdversarialLab";
+import PolicyStudio from "./components/PolicyStudio";
+import AuditExplorer from "./components/AuditExplorer";
+import IntegrationsAdmin from "./components/IntegrationsAdmin";
+import ApprovalCenter from "./components/ApprovalCenter";
 
 let SESSION: string | null = null;
 try {
@@ -208,13 +222,17 @@ function computeWordDiff(beforeText: string, afterText: string) {
 }
 const nav = [
   ["overview", "Overview", LayoutDashboard],
-  ["documents", "Content library", Files],
-  ["sources", "Brand knowledge", BookOpen],
-  ["lab", "Rule laboratory", FlaskConical],
-  ["assets", "Visual & accessibility", ImageIcon],
-  ["insights", "Governance insights", BarChart3],
-  ["campaigns", "Campaign bundles", Layers],
-  ["activity", "Activity log", History],
+  ["sources", "Evidence Workspace", BookOpen],
+  ["documents", "Document Reviews", Files],
+  ["graph", "Evidence Graph", Network],
+  ["studio", "Policy Studio", FileCode],
+  ["approvals", "Approval Center", ShieldCheck],
+  ["verification", "Verification Center", Key],
+  ["risk", "Risk Intelligence", BarChart3],
+  ["audit", "Audit Explorer", History],
+  ["benchmark", "Adversarial Lab", ShieldAlert],
+  ["integrations", "Integrations", Radio],
+  ["admin", "Administration", Settings],
 ] as const;
 function Badge({ children, tone = "neutral" }: any) {
   return <span className={"badge " + tone}>{children}</span>;
@@ -615,7 +633,7 @@ export default function App() {
               <Icon size={18} />
               <span>{label}</span>
               {id === "documents" && <em>{state.documents.length}</em>}
-              {id === "lab" && <span className="tiny-new">LAB</span>}
+              {id === "benchmark" && <span className="tiny-new">LAB</span>}
             </button>
           ))}
         </nav>
@@ -686,21 +704,47 @@ export default function App() {
               <div>
                 <strong>{state.actor.name}</strong>
                 {state.mode === "demo" ? (
-                  <select
-                    aria-label="Active role"
-                    value={state.actor.role}
-                    onChange={(ev) =>
-                      safe(
-                        () =>
-                          api("/persona", "POST", { role: ev.target.value }),
-                        "Role changed to " + ev.target.value + ".",
-                      )
-                    }
-                  >
-                    <option value="creator">Creator (Author)</option>
-                    <option value="manager">Manager (Admin)</option>
-                    <option value="reviewer">Reviewer (Auditor)</option>
-                  </select>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <select
+                      aria-label="Active role"
+                      value={state.actor.role}
+                      onChange={(ev) =>
+                        safe(
+                          () =>
+                            api("/persona", "POST", { role: ev.target.value }),
+                          "Role changed to " + ev.target.value + ".",
+                        )
+                      }
+                    >
+                      <option value="creator">Creator (Author)</option>
+                      <option value="reviewer">Reviewer (Auditor)</option>
+                      <option value="manager">Manager (Admin)</option>
+                      <option value="auditor">Auditor (Read-Only)</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{
+                        fontSize: "11px",
+                        padding: "3px 8px",
+                        background: "rgba(6, 182, 212, 0.12)",
+                        border: "1px solid rgba(6, 182, 212, 0.35)",
+                        color: "#22d3ee",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                      onClick={() =>
+                        safe(async () => {
+                          await api("/demo/reset", "POST");
+                          await refresh();
+                        }, "Demo workspace reset to 9 scenarios (expired cert, contradictory sources, pricing rules, prompt injection).")
+                      }
+                      title="Reset workspace with all 9 hackathon demo test scenarios"
+                    >
+                      <RefreshCw size={11} /> Reset Demo
+                    </button>
+                  </div>
                 ) : (
                   <small>{state.actor.role}</small>
                 )}
@@ -810,6 +854,121 @@ export default function App() {
                   }
                 />
               </div>
+
+              {/* Proofline 2.0 Autonomous Governance Intelligence Deck */}
+              <div style={{ margin: "20px 0" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Sparkles size={16} color="#06b6d4" />
+                    <strong style={{ fontSize: "14px", color: "var(--foreground)", letterSpacing: "0.02em" }}>
+                      PROOFLINE 2.0 GOVERNANCE INNOVATIONS
+                    </strong>
+                    <span className="badge badge-cyan" style={{ fontSize: "10px" }}>ENTERPRISE SUITE</span>
+                  </div>
+                  <span style={{ fontSize: "12px", color: "var(--sub)" }}>
+                    Verifiable AI Compliance &amp; Proof Pipeline
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px" }}>
+                  <div
+                    className="card-glass"
+                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    onClick={() => setTab("graph")}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(6, 182, 212, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#22d3ee" }}>
+                        <Network size={16} />
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Evidence Graph</strong>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>Trace claims to sources &amp; cascade impact</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="card-glass"
+                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    onClick={() => setTab("verification")}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(16, 185, 129, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#34d399" }}>
+                        <Key size={16} />
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Verification Center</strong>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>Ed25519 &amp; 1-word tamper detection demo</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="card-glass"
+                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    onClick={() => setTab("studio")}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(168, 85, 247, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#c084fc" }}>
+                        <FileCode size={16} />
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Policy Studio</strong>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>Deterministic rules &amp; NL synthesizer</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="card-glass"
+                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    onClick={() => setTab("risk")}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(245, 158, 11, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fbbf24" }}>
+                        <BarChart3 size={16} />
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Risk Intelligence</strong>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>5x5 heat map &amp; source expiration monitor</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="card-glass"
+                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    onClick={() => setTab("benchmark")}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(244, 63, 94, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fb7185" }}>
+                        <ShieldAlert size={16} />
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Adversarial Lab</strong>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>12-test ground truth &amp; prompt injection test</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="card-glass"
+                    style={{ padding: "16px", borderRadius: "12px", border: "1px solid rgba(51, 65, 85, 0.6)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    onClick={() => setTab("audit")}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(59, 130, 246, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "#60a5fa" }}>
+                        <History size={16} />
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "13px", color: "#fff", display: "block" }}>Audit Explorer</strong>
+                        <span style={{ fontSize: "11px", color: "#94a3b8" }}>Append-only SHA-256 chain verification</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="overview-grid">
                 <section className="panel">
                   <div className="panel-heading">
@@ -1081,6 +1240,41 @@ export default function App() {
               state={state}
               safe={safe}
               start={start}
+            />
+          )}
+          {tab === "graph" && (
+            <EvidenceGraph api={api} onSelectDocument={openDoc} />
+          )}
+          {tab === "studio" && <PolicyStudio apiBase="" />}
+          {tab === "verification" && (
+            <VerificationPassport
+              api={api}
+              receipts={state.receipts || []}
+              documents={state.documents || []}
+            />
+          )}
+          {tab === "risk" && (
+            <RiskIntelligence
+              api={api}
+              state={state}
+              onNavigate={(t: string) => setTab(t)}
+            />
+          )}
+          {tab === "audit" && (
+            <AuditExplorer apiBase="" initialEvents={state.events} />
+          )}
+          {tab === "benchmark" && <AdversarialLab apiBase="" />}
+          {tab === "integrations" && <IntegrationsAdmin apiBase="" />}
+          {tab === "admin" && <IntegrationsAdmin apiBase="" />}
+          {tab === "approvals" && (
+            <ApprovalCenter
+              state={state}
+              safe={safe}
+              api={api}
+              refresh={refresh}
+              notify={setNotice}
+              openDoc={openDoc}
+              onVerifyReceipt={() => setTab("verification")}
             />
           )}
           <footer className="content-footer">

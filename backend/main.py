@@ -674,6 +674,7 @@ def demo(response: Response):
         actor,
     )
     st["documents"].append(d)
+    e.event(st, actor, "Workspace initialized", "Demo workspace session started", doc_id=d["id"])
     local.create(wid, st)
     known.add((wid, "demo"))
     token = issue(response, {"wid": wid, "mode": "demo", "actor": actor})
@@ -1200,21 +1201,25 @@ def export(did: str, request: Request, format: str = "json"):
         ready = e.readiness(st, d)
         if not ready["eligible"]:
             raise HTTPException(409, "Export blocked: " + " ".join(ready["reasons"]))
-        receipt = {
+        from .crypto_passport import sign_passport
+        raw_receipt = {
             "id": e.uid(),
             "documentId": did,
             "title": d["title"],
             "revision": d["revision"],
             "sourceVersion": st["sourceVersion"],
+            "policyVersion": 1,
             "fingerprint": e.digest(d),
             "reviewer": d["decision"]["reviewerName"],
+            "decision": "approved",
             "approvedAt": d["decision"]["at"],
             "exportedAt": e.now(),
             "coverage": d["review"].get("coverage", {}),
             "manualCoverage": d["decision"]["manualCoverage"],
-            "checkerVersion": "rules-0.1.0",
-            "note": "Application receipt, not a digital signature or immutable certificate. Previously downloaded copies remain historical.",
+            "checkerVersion": "proofline-2.0.0",
+            "note": "Cryptographically signed Ed25519 release receipt. Tamper-evident proof of authorization.",
         }
+        receipt = sign_passport(raw_receipt)
         st["receipts"].append(receipt)
         e.event(st, s["actor"], "Approved export", receipt["id"], did)
         return {"receipt": receipt, "content": d["text"], "context": d["context"]}
@@ -2122,6 +2127,243 @@ def delete_document(did: str, request: Request):
         }
 
     return store(s).mutate(s["wid"], fn)
+
+
+# -----------------------------------------------------------------------------
+# Proofline 2.0 - Extended API Endpoints
+# -----------------------------------------------------------------------------
+
+@app.get("/api/graph")
+def graph(request: Request):
+    """Retrieve complete graph of sources, passages, rules, findings, claims, documents, and receipts."""
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    return e.generate_evidence_graph(st)
+
+
+@app.get("/api/risk/intelligence")
+def risk_intelligence(request: Request):
+    """Retrieve compliance risk matrix, evidence coverage metrics, and drift indicators."""
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    return e.calculate_risk_intelligence(st)
+
+
+@app.get("/api/impact/{sid}")
+def impact(sid: str, request: Request):
+    """Analyze downstream cascade of rules, documents, and receipts affected by a source change."""
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    return e.calculate_change_impact(st, sid)
+
+
+@app.post("/api/benchmark/run")
+def benchmark_run(request: Request):
+    """Execute adversarial evaluation benchmark suite and record ground truth metrics."""
+    s = session(request)
+    from .agents_pipeline import run_adversarial_benchmark
+    st, _ = store(s).read(s["wid"])
+    res = run_adversarial_benchmark(st, e.check)
+    store(s).mutate(
+        s["wid"],
+        lambda cur: e.event(
+            cur,
+            s["actor"],
+            "Adversarial benchmark executed",
+            f"Accuracy: {res['accuracy']}%, F1: {res['f1Score']}% across {res['totalCases']} cases",
+        ),
+    )
+    return res
+
+
+@app.get("/api/audit/verify")
+def audit_verify(request: Request):
+    """Cryptographically verify unbroken SHA-256 hash chains of the workspace event ledger."""
+    s = session(request)
+    from .agents_pipeline import verify_audit_ledger_integrity
+    st, _ = store(s).read(s["wid"])
+    return verify_audit_ledger_integrity(st.get("events", []))
+
+
+@app.get("/api/audit/export")
+def audit_export(request: Request, format: str = "json"):
+    """Export complete audit ledger in JSON or CSV format."""
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    events = st.get("events", [])
+    if format == "csv":
+        import io, csv
+        out = io.StringIO()
+        writer = csv.writer(out)
+        writer.writerow(["seq", "at", "actor", "actorRole", "action", "detail", "documentId", "resource", "prevHash", "eventHash"])
+        for ev in events:
+            writer.writerow([
+                ev.get("seq", ""),
+                ev.get("at", ""),
+                ev.get("actor", ""),
+                ev.get("actorRole", ""),
+                ev.get("action", ""),
+                ev.get("detail", ""),
+                ev.get("documentId", ""),
+                ev.get("resource", ""),
+                ev.get("prevHash", ""),
+                ev.get("eventHash", ""),
+            ])
+        return Response(
+            out.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="proofline-audit-ledger.csv"'},
+        )
+    return {"events": events, "exportedAt": e.now()}
+
+
+@app.post("/api/receipts/verify")
+def verify_receipt(p: Payload):
+    """Public independent receipt verification endpoint. Validates Ed25519 signature and SHA-256 content hash."""
+    from .crypto_passport import verify_passport
+    receipt = p.data.get("receipt", {})
+    candidate_text = p.data.get("candidateText")
+    candidate_context = p.data.get("candidateContext")
+    return verify_passport(receipt, candidate_text=candidate_text, candidate_context=candidate_context)
+
+
+@app.get("/api/receipts/{rcp_id}/verify")
+def verify_receipt_by_id(rcp_id: str, request: Request):
+    """Verify stored receipt by ID against current document text."""
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    rcp = next((r for r in st.get("receipts", []) if r.get("id") == rcp_id), None)
+    if not rcp:
+        raise HTTPException(404, "Receipt not found")
+    from .crypto_passport import verify_passport
+    doc = next((d for d in st.get("documents", []) if d["id"] == rcp.get("documentId")), None)
+    candidate_text = doc["text"] if doc else None
+    return verify_passport(rcp, candidate_text=candidate_text)
+
+
+@app.post("/api/sources/ingest")
+async def ingest_source(request: Request):
+    """Multi-format document or URL ingestion endpoint with SSRF protections."""
+    s = session(request)
+    require(s, "manager")
+    content_type = request.headers.get("content-type", "")
+
+    if "application/json" in content_type:
+        payload = await request.json()
+        data = payload.get("data", payload)
+        url = str(data.get("url", "")).strip()
+        if not url:
+            raise HTTPException(422, "URL is required for web ingestion")
+        from .ingestion import fetch_web_page
+        try:
+            ingested = await fetch_web_page(url)
+        except ValueError as err:
+            raise HTTPException(422, str(err))
+        title = ingested["title"]
+        body = ingested["body"]
+        trust_level = ingested["trustLevel"]
+        source_type = "url"
+    else:
+        form = await request.form()
+        upload = form.get("file")
+        if not upload or not hasattr(upload, "read"):
+            raise HTTPException(422, "File upload required")
+        data_bytes = await upload.read(10 * 1024 * 1024)
+        from .ingestion import extract_multi_format_content
+        try:
+            parsed = extract_multi_format_content(upload.filename, data_bytes)
+        except ValueError as err:
+            raise HTTPException(422, str(err))
+        title = str(form.get("title") or upload.filename)[:150]
+        body = parsed["text"]
+        trust_level = str(form.get("trustLevel") or parsed.get("trustLevel") or "OFFICIAL_APPROVED")
+        source_type = parsed["format"]
+
+    from .agents_pipeline import segment_source_into_passages, sha256_text
+
+    def fn(st):
+        item = {
+            "id": e.uid(),
+            "title": title,
+            "body": body,
+            "trustLevel": trust_level,
+            "sourceType": source_type,
+            "hash": sha256_text(body),
+            "active": False,
+            "confirmed": False,
+            "version": st["sourceVersion"] + 1,
+            "createdAt": e.now(),
+        }
+        item["passages"] = segment_source_into_passages(item)
+        st["sources"].insert(0, item)
+        e.event(st, s["actor"], "Source ingested", f"{title} ({source_type.upper()})")
+        return item
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.post("/api/policies/build-nl")
+def build_nl_policy(p: Payload, request: Request):
+    """Natural-Language Policy Builder: Converts plain-English guidance into structured rule candidate with test fixtures."""
+    s = session(request)
+    require(s, "manager")
+    desc = str(p.data.get("description", "")).strip()
+    if len(desc) < 10:
+        raise HTTPException(422, "Provide a policy rule description of at least 10 characters.")
+
+    kind = "prohibited"
+    name = "Compliance Restriction"
+    pattern = ""
+    replacement = ""
+    severity = "high"
+
+    lower_d = desc.lower()
+    if any(w in lower_d for w in ("prohibit", "never", "do not", "ban", "disallow")):
+        kind = "prohibited"
+        name = "Prohibited Claim Rule"
+    elif any(w in lower_d for w in ("term", "replace", "preferred", "wording")):
+        kind = "terminology"
+        name = "Approved Terminology Rule"
+    elif any(w in lower_d for w in ("require", "disclaimer", "qualify")):
+        kind = "required"
+        name = "Mandatory Disclaimer Rule"
+    elif any(w in lower_d for w in ("%", "percent", "saving", "number", "metric")):
+        kind = "claim"
+        name = "Numerical Claim Condition"
+
+    quoted = re.findall(r'["\']([^"\']+)["\']', desc)
+    if quoted:
+        pattern = ", ".join(quoted)
+    else:
+        words = [w for w in re.findall(r"\w+", desc) if len(w) > 4 and w not in ("should", "policy", "cannot", "allow", "claims", "without")]
+        pattern = ", ".join(words[:4])
+
+    proposed_rule = {
+        "name": name,
+        "kind": kind,
+        "severity": severity,
+        "pattern": pattern or "unapproved claim",
+        "replacement": replacement,
+        "quote": "Derived from natural language specification.",
+        "testCases": [
+            {"text": f"Sample with {pattern.split(',')[0] if pattern else 'flagged term'}", "shouldFlag": True},
+            {"text": "Clean standard copy without restricted phrase.", "shouldFlag": False},
+        ],
+        "explanation": f"Automated interpretation of: '{desc}'",
+        "requiresReview": True,
+    }
+    return {"ok": True, "proposedRule": proposed_rule}
+
+
+@app.post("/api/demo/reset")
+def demo_reset(request: Request):
+    """Reset current demo workspace to rich pristine state with all 9 scenario fixtures."""
+    s = session(request)
+    if s["mode"] != "demo":
+        raise HTTPException(403, "Reset is only allowed in demo mode")
+    new_state = e.seed_demo_workspace()
+    local.mutate(s["wid"], lambda st: (st.clear(), st.update(new_state), st)[-1])
+    return {"ok": True, "message": "Demo workspace successfully reset to pristine state."}
 
 
 @app.get("/healthz")

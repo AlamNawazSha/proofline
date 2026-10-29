@@ -46,3 +46,379 @@
 .member-row>div{flex:1;min-width:0}
 .member-row strong{font-size:12px;display:block}
 .member-row small{font-size:12px;color:#5f7385;overflow-wrap:anywhere}
+
+/* -------------------------------------------------------------------------- */
+/* Proofline 2.0 - Enterprise Design System & Modern Aesthetics              */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  --navy-900: #0b1329;
+  --navy-800: #101c3d;
+  --navy-700: #182852;
+  --cyan-500: #06b6d4;
+  --cyan-600: #0891b2;
+  --cyan-glow: rgba(6, 182, 212, 0.18);
+  --blue-600: #2563eb;
+  --emerald-600: #059669;
+  --emerald-bg: #ecfdf5;
+  --rose-600: #e11d48;
+  --rose-bg: #fff1f2;
+}
+
+/* Nav Item Styling & Sidebar Improvements */
+.sidebar {
+  background: #ffffff;
+  box-shadow: 2px 0 16px rgba(11, 19, 41, 0.04);
+}
+.nav-item.active {
+  background: linear-gradient(90deg, #ecfeff 0%, #f0fdfa 100%);
+  color: #0891b2;
+  border-left: 3px solid #0891b2;
+  font-weight: 600;
+}
+.nav-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #e2e8f0;
+  color: #475569;
+  margin-left: auto;
+}
+.nav-badge.alert {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Topbar Improvements */
+.topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(11, 19, 41, 0.02);
+}
+.quick-search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.quick-search-trigger:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+.shortcut-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  color: #475569;
+}
+
+/* Presentation Demo Step Banner */
+.presentation-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  padding: 10px 28px;
+  font-size: 12px;
+  border-bottom: 1px solid #334155;
+  flex-wrap: wrap;
+}
+.presentation-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.presentation-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+.presentation-step:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+.presentation-step.active {
+  background: #0891b2;
+  color: #ffffff;
+  font-weight: 600;
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(8, 145, 178, 0.5);
+}
+
+/* Evidence Graph View */
+.graph-container {
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  overflow: hidden;
+  height: 640px;
+  position: relative;
+}
+.graph-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  color: #f1f5f9;
+  z-index: 10;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.graph-canvas {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background: radial-gradient(#1e293b 1px, transparent 1px);
+  background-size: 24px 24px;
+  padding: 30px;
+}
+.graph-nodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.graph-node-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 14px;
+  color: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.graph-node-card:hover {
+  border-color: #38bdf8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(6, 182, 212, 0.25);
+}
+.graph-node-card.selected {
+  border-color: #06b6d4;
+  outline: 2px solid #06b6d4;
+  background: #172554;
+}
+.graph-node-card[data-type="source"] { border-left: 4px solid #3b82f6; }
+.graph-node-card[data-type="passage"] { border-left: 4px solid #06b6d4; }
+.graph-node-card[data-type="rule"] { border-left: 4px solid #a855f7; }
+.graph-node-card[data-type="finding"] { border-left: 4px solid #f97316; }
+.graph-node-card[data-type="document"] { border-left: 4px solid #10b981; }
+.graph-node-card[data-type="receipt"] { border-left: 4px solid #14b8a6; }
+.graph-inspector {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  background: #1e293b;
+  border-left: 1px solid #334155;
+  padding: 20px;
+  color: #f8fafc;
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Side-by-Side Document Correction Workspace */
+.correction-split-view {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1024px) {
+  .correction-split-view {
+    grid-template-columns: 1fr;
+  }
+}
+.original-doc-pane {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  position: relative;
+}
+.corrected-doc-pane {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 20px;
+}
+.finding-highlight-span {
+  background: #fee2e2;
+  border-bottom: 2px solid #e11d48;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+.finding-highlight-span:hover {
+  background: #fecdd3;
+}
+.finding-highlight-span.active {
+  outline: 2px solid #e11d48;
+  background: #fca5a5;
+}
+
+/* Risk Matrix Heatmap */
+.risk-matrix-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 6px;
+  margin: 16px 0;
+}
+.risk-matrix-table th {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 6px;
+  text-align: center;
+}
+.risk-matrix-cell {
+  height: 60px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  transition: transform 0.15s ease;
+  cursor: pointer;
+}
+.risk-matrix-cell:hover {
+  transform: scale(1.05);
+}
+.cell-critical { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+.cell-high { background: #ffedd5; color: #9a3412; border: 1px solid #fb923c; }
+.cell-medium { background: #fef9c3; color: #854d0e; border: 1px solid #facc15; }
+.cell-low { background: #dcfce7; color: #166534; border: 1px solid #4ade80; }
+.cell-info { background: #e0f2fe; color: #0369a1; border: 1px solid #38bdf8; }
+
+/* Cryptographic Approval Passport Card */
+.passport-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #334155;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.25);
+}
+.passport-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+.passport-signature-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid #06b6d4;
+  color: #38bdf8;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+}
+
+/* Adversarial Benchmark Lab */
+.benchmark-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 900px) {
+  .benchmark-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.benchmark-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+.benchmark-kpi-card strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 6px;
+}
+.benchmark-case-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  background: #ffffff;
+  transition: all 0.15s ease;
+}
+.benchmark-case-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+/* Change Impact Cascade Tree */
+.impact-tree {
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+.impact-branch {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0;
+  padding-left: 16px;
+  border-left: 2px solid #cbd5e1;
+}
+
+/* Modal Wide adjustments */
+.modal.max-wide {
+  width: 960px;
+  max-width: 95vw;
+}
