@@ -254,7 +254,7 @@ def seed(name="Northstar Studio"):
 
 
 def seed_demo_workspace(name="Northstar Enterprise"):
-    """Rich demo workspace containing all 9 hackathon scenarios requested by Proofline 2.0."""
+    """Rich demo workspace containing all 9 hackathon scenarios requested by Proofline."""
     from .agents_pipeline import segment_source_into_passages, sha256_text
     from .crypto_passport import sign_passport, canonical_fingerprint
 
@@ -565,11 +565,17 @@ DATE_PATTERNS = [
         r"\d{1,2}\s*(?:am|pm)|\d+(?:st|nd|rd|th))\b",
         re.I,
     ),
+    # Standalone dates, ordinals and times
+    re.compile(r"\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm|ist|utc|gmt|est|pst|cst|mst)?\b", re.I),
+    re.compile(r"\b\d+(?:st|nd|rd|th)\b", re.I),
+    re.compile(r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"),
+    re.compile(r"\b(?:v\d+\.\d+(?:\.\d+)*|\d+\.\d+\.\d+(?:\.\d+)*)(?:-[a-zA-Z0-9.]+)?\b", re.I),
+    re.compile(r"\b(?:ISO|IEC|IEEE|SOC|RFC|NIST|FIPS|CFR)[-\s]?\d+(?:[-\s:]\d+)*\b", re.I),
 ]
 LIST_PATTERNS = [
     re.compile(r"(?:^|[\n\r]|;\s*|\.\s+|\(\s*)\(?\d{1,2}[.)]\s*", re.I),
     re.compile(
-        r"\b(?:step|phase|item|stage|section|rule|chapter|part|version|v|vol)\.?\s+(\d+)\b",
+        r"\b(?:step|steps|phase|phases|item|items|stage|stages|section|sections|rule|rules|chapter|chapters|part|parts|version|versions|v|vol|volume|tier|tiers)\.?\s+(?:\d+[a-zA-Z]?(?:\s*(?:,|&|and|or|-|–|to)\s*\d+[a-zA-Z]?)*)\b",
         re.I,
     ),
 ]
@@ -1101,8 +1107,12 @@ def quorum_state(state, doc) -> dict:
         fp_ok = app.get("fingerprint") == current_digest
         not_self = app.get("reviewerId") != doc.get("creatorId")
         not_revoked = not (revoked_at and app.get("at", "") <= revoked_at)
+        pol_ok = (
+            app.get("policyVersion") is None
+            or app.get("policyVersion") == state.get("approvalPolicy", {}).get("version", 1)
+        )
 
-        if rev_ok and src_ok and fp_ok and not_self and not_revoked:
+        if rev_ok and src_ok and fp_ok and not_self and not_revoked and pol_ok:
             valid_signers.add(app["reviewerId"])
         else:
             stale_signatures += 1

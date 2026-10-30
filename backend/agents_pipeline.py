@@ -1,4 +1,4 @@
-"""Proofline 2.0 - Autonomous Evidence Intelligence & Multi-Agent Verification Pipeline.
+"""Proofline (v0.2.0) - Content Governance & Deterministic Pipeline Stages.
 
 Implements:
 - Agent A: Claim Extraction Agent (Atomic factual claims)
@@ -1101,8 +1101,8 @@ def run_adversarial_benchmark(state: Dict[str, Any], check_fn) -> Dict[str, Any]
         "breakdown": {
             "deterministicRules": len([c for c in BENCHMARK_CASES if c["category"] not in ("Prompt Injection Defense", "Privacy Preflight")]),
             "adversarialAndSecurity": len([c for c in BENCHMARK_CASES if c["category"] in ("Prompt Injection Defense", "Privacy Preflight")]),
-            "annotators": 2,
-            "annotatorAgreement": "100% Cohen's Kappa = 1.00",
+            "annotators": 0,
+            "annotatorAgreement": "Labelled by team; inter-annotator agreement not measured",
         },
         "cases": results,
         "results": results,

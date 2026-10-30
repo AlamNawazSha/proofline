@@ -120,7 +120,7 @@ export default function AdversarialLab({ apiBase = "", api }: AdversarialLabProp
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 Adversarial AI Compliance & Security Lab
-                <span className="badge badge-purple text-xs">Proofline 2.0</span>
+                <span className="badge badge-purple text-xs">Proofline</span>
               </h2>
               <p className="text-sm text-slate-400">
                 Ground-truth adversarial benchmark suite testing prompt injection, fabricated citations, conflicting sources, and statistical reliability.

@@ -48,6 +48,7 @@ import {
   Sliders,
   ShieldAlert,
   Key,
+  Users,
 } from "lucide-react";
 import EvidenceGraph from "./components/EvidenceGraph";
 import RiskIntelligence from "./components/RiskIntelligence";
@@ -536,11 +537,14 @@ export default function App() {
           <div className="landing-actions">
             <Button variant="primary large" onClick={start} disabled={busy}>
               {busy ? (
-                <Loader2 className="spin" size={18} />
+                <>
+                  <Loader2 className="spin" size={18} /> Starting the demo, this can take up to ~60 seconds...
+                </>
               ) : (
-                <ArrowRight size={18} />
-              )}{" "}
-              Get Started with Proofline
+                <>
+                  <ArrowRight size={18} /> Get Started with Proofline
+                </>
+              )}
             </Button>
             <span>
               <Lock size={14} /> Instant workspace access. No credit card required.
@@ -856,22 +860,96 @@ export default function App() {
                 />
               </div>
 
-              {/* Proofline 2.0 Autonomous Governance Intelligence Deck */}
+              {/* Round 3 Delivered Improvements */}
               <div className="innovations-deck">
                 <div className="innovations-header">
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <Sparkles size={16} style={{ color: "var(--teal)" }} />
                     <strong className="innovations-label">
-                      PROOFLINE 2.0 GOVERNANCE INNOVATIONS
+                      ROUND 3 DELIVERED IMPROVEMENTS
                     </strong>
-                    <span className="badge blue" style={{ fontSize: "10px", padding: "2px 7px" }}>ENTERPRISE SUITE</span>
+                    <span className="badge blue" style={{ fontSize: "10px", padding: "2px 7px" }}>VERIFIED &amp; TESTED</span>
                   </div>
                   <span style={{ fontSize: "12px", color: "var(--muted)" }}>
-                    Verifiable AI Compliance &amp; Proof Pipeline
+                    Three Frozen Commitments Delivered
                   </span>
                 </div>
 
                 <div className="innovations-grid">
+                  <div
+                    className="innovation-card"
+                    onClick={() => setTab("approvals")}
+                  >
+                    <div className="innovation-icon-box" style={{ background: "#e0f2fe", color: "#0284c7" }}>
+                      <Clock size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">1. Cascade re-review with ownership</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
+                      </div>
+                      <span className="innovation-desc">Lifecycle change hooks, owned tasks, SLA tracking &amp; re-approval closure</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="innovation-card"
+                    onClick={() => setTab("benchmark")}
+                  >
+                    <div className="innovation-icon-box" style={{ background: "#fff1f2", color: "#e11d48" }}>
+                      <ShieldAlert size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">2. Benchmarked detection quality, enforced in CI</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
+                      </div>
+                      <span className="innovation-desc">30-item ground-truth benchmark, 12 quality gates, CI regression block</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="innovation-card"
+                    onClick={() => setTab("approvals")}
+                  >
+                    <div className="innovation-icon-box" style={{ background: "#ecfdf5", color: "#059669" }}>
+                      <Users size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">3. Multi-reviewer approval policy</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
+                      </div>
+                      <span className="innovation-desc">Multi-party quorum, distinct signers, explicit revocation, server-side export gate</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="innovations-header" style={{ marginTop: "16px", paddingTop: "12px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <strong className="innovations-label" style={{ fontSize: "11px", color: "var(--muted)" }}>
+                      ADDITIONAL CAPABILITIES (OUTSIDE ROUND 3 IMPROVEMENTS)
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="innovations-grid">
+                  <div
+                    className="innovation-card"
+                    onClick={() => setTab("verification")}
+                  >
+                    <div className="innovation-icon-box" style={{ background: "#ecfdf5", color: "#059669" }}>
+                      <Key size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
+                        <strong className="innovation-title">Verification Center</strong>
+                        <ArrowRight size={13} className="innovation-arrow" />
+                      </div>
+                      <span className="innovation-desc">Ed25519 digital receipts &amp; 1-char tamper detection</span>
+                    </div>
+                  </div>
+
                   <div
                     className="innovation-card"
                     onClick={() => setTab("graph")}
@@ -885,70 +963,6 @@ export default function App() {
                         <ArrowRight size={13} className="innovation-arrow" />
                       </div>
                       <span className="innovation-desc">Trace claims to sources &amp; cascade impact</span>
-                    </div>
-                  </div>
-
-                  <div
-                    className="innovation-card"
-                    onClick={() => setTab("verification")}
-                  >
-                    <div className="innovation-icon-box" style={{ background: "#ecfdf5", color: "#059669" }}>
-                      <Key size={18} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                        <strong className="innovation-title">Verification Center</strong>
-                        <ArrowRight size={13} className="innovation-arrow" />
-                      </div>
-                      <span className="innovation-desc">Ed25519 &amp; 1-word tamper detection demo</span>
-                    </div>
-                  </div>
-
-                  <div
-                    className="innovation-card"
-                    onClick={() => setTab("studio")}
-                  >
-                    <div className="innovation-icon-box" style={{ background: "#faf5ff", color: "#9333ea" }}>
-                      <FileCode size={18} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                        <strong className="innovation-title">Policy Studio</strong>
-                        <ArrowRight size={13} className="innovation-arrow" />
-                      </div>
-                      <span className="innovation-desc">Deterministic rules &amp; NL synthesizer</span>
-                    </div>
-                  </div>
-
-                  <div
-                    className="innovation-card"
-                    onClick={() => setTab("risk")}
-                  >
-                    <div className="innovation-icon-box" style={{ background: "#fffbeb", color: "#d97706" }}>
-                      <BarChart3 size={18} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                        <strong className="innovation-title">Risk Intelligence</strong>
-                        <ArrowRight size={13} className="innovation-arrow" />
-                      </div>
-                      <span className="innovation-desc">5x5 heat map &amp; source expiration monitor</span>
-                    </div>
-                  </div>
-
-                  <div
-                    className="innovation-card"
-                    onClick={() => setTab("benchmark")}
-                  >
-                    <div className="innovation-icon-box" style={{ background: "#fff1f2", color: "#e11d48" }}>
-                      <ShieldAlert size={18} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" }}>
-                        <strong className="innovation-title">Adversarial Lab</strong>
-                        <ArrowRight size={13} className="innovation-arrow" />
-                      </div>
-                      <span className="innovation-desc">12-test ground truth &amp; prompt injection test</span>
                     </div>
                   </div>
 

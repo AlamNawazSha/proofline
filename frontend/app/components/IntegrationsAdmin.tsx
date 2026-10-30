@@ -60,7 +60,7 @@ export default function IntegrationsAdmin({ apiBase }: IntegrationsAdminProps) {
             <div>
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 Enterprise Administration & Integrations
-                <span className="badge badge-cyan text-xs">Proofline 2.0</span>
+                <span className="badge badge-cyan text-xs">Proofline</span>
               </h2>
               <p className="text-sm text-slate-400">
                 Manage webhook dispatchers, cryptographic key rings, RBAC authorization boundaries, and retention policies.
@@ -231,7 +231,7 @@ export default function IntegrationsAdmin({ apiBase }: IntegrationsAdminProps) {
               <h3 className="text-base font-bold text-white">Ed25519 Cryptographic Key Ring</h3>
             </div>
             <p className="text-xs text-slate-400">
-              Proofline 2.0 signs all release approval receipts using an internal elliptic curve key ring. The private key remains secure on the server; the public key is distributed for independent offline verification.
+              Proofline signs all release approval receipts using an internal elliptic curve key ring. The private key remains secure on the server; the public key is distributed for independent offline verification.
             </p>
 
             <div className="space-y-2 text-xs font-mono">
@@ -272,7 +272,7 @@ export default function IntegrationsAdmin({ apiBase }: IntegrationsAdminProps) {
                   <option value="90">90 Days (Aggressive Shorter Retention)</option>
                   <option value="365">365 Days (1 Year Compliance Standard)</option>
                   <option value="2555">7 Years (Financial / Regulatory Standard)</option>
-                  <option value="9999">Indefinite Immutable Archive</option>
+                  <option value="9999">Indefinite Archive</option>
                 </select>
               </div>
 

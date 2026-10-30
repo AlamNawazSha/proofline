@@ -467,11 +467,23 @@ export default function ApprovalCenter({
                           <span>
                             Fingerprint: {doc.fingerprint ? doc.fingerprint.substring(0, 20) + "..." : "sha256:pending"}
                           </span>
-                          {isApproved && (
+                          {approvers.length > 0 && approvers.length < quorumRequired && (
+                            <span className="text-amber-400 font-semibold flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {approvers.length} of {quorumRequired} required signatures: waiting for a second reviewer ({approvers.join(", ")})
+                              {doc.escalationDue && ` · Escalation due: ${new Date(doc.escalationDue).toLocaleTimeString()}`}
+                            </span>
+                          )}
+                          {approvers.length >= quorumRequired && (
                             <span className="text-emerald-400 font-semibold flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              Quorum: {approvers.length}/{quorumRequired} Verified Signatures
-                              {approvers.length > 0 && ` (${approvers.join(", ")})`}
+                              Quorum satisfied: {approvers.length} of {quorumRequired} verified signatures ({approvers.join(", ")})
+                            </span>
+                          )}
+                          {approvers.length === 0 && quorumRequired > 1 && (
+                            <span className="text-slate-400 font-semibold flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              0 of {quorumRequired} required signatures: waiting for initial review
                             </span>
                           )}
                         </div>

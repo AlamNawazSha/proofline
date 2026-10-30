@@ -256,7 +256,7 @@ export default function VerificationPassport({ api, receipts, documents }: Verif
               <ShieldCheck size={18} style={{ color: "var(--teal)" }} />
               Cryptographic Release Receipts
             </h2>
-            <p>Every approved publication is bound to an immutable Ed25519 signature and SHA-256 hash.</p>
+            <p>Every approved publication is bound to an server-signed Ed25519 receipt and SHA-256 hash.</p>
           </div>
         </div>
 

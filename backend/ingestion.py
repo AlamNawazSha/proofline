@@ -1,4 +1,4 @@
-"""Proofline 2.0 - Multi-Format Ingestion Pipeline with SSRF Guards.
+"""Proofline (v0.2.0) - Multi-Format Ingestion Pipeline with SSRF Guards.
 
 Supports: PDF, DOCX, TXT, Markdown, CSV, HTML, Scanned/Images, and Web URLs.
 Enforces strict SSRF protections against internal network scanning.

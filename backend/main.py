@@ -709,6 +709,18 @@ def config():
     }
 
 
+@app.get("/api/public-key")
+def public_key():
+    """Export current active server-side Ed25519 public key (hex) for external receipt verification."""
+    from .crypto_passport import get_public_key_hex
+    return {
+        "algorithm": "Ed25519",
+        "publicKeyHex": get_public_key_hex(),
+        "keyStatus": "active",
+        "notice": "Receipts verify against the server key that signed them. Key rotation renders unkeyed receipts unverifiable."
+    }
+
+
 @app.post("/api/demo")
 def demo(response: Response):
     if not DEMO:
@@ -2818,7 +2830,7 @@ def delete_document(did: str, request: Request):
 
 
 # -----------------------------------------------------------------------------
-# Proofline 2.0 - Extended API Endpoints
+# Proofline (v0.2.0) - Extended API Endpoints
 # -----------------------------------------------------------------------------
 
 @app.get("/api/re-review-queue")
