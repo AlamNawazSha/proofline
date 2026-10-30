@@ -587,3 +587,4 @@ def test_receipt_lists_all_signers_and_policy_version(client):
     sig_names = [s["reviewerName"] for s in receipt["signatures"]]
     assert "Jordan Lee" in sig_names
     assert "Taylor Reed" in sig_names
+

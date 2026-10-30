@@ -9,6 +9,7 @@ jobs:
         with: {python-version: '3.12'}
       - run: pip install -r backend/requirements.txt
       - run: python -m pytest tests -q
+      - run: python scripts/eval_quality.py --offline --out benchmark/results.json
   frontend:
     runs-on: ubuntu-latest
     defaults: {run: {working-directory: frontend}}
