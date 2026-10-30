@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate the Official Round 3 Product Submission PDF for Proofline 2.0.
+Generate the Official Round 3 Product Submission PDF for Proofline.
 Uses ReportLab 4.5.1 to build a publication-grade PDF document.
 """
 
@@ -133,10 +133,10 @@ def generate_pdf(output_path: str):
     story = []
 
     # Title & Header
-    story.append(Paragraph("PROOFLINE 2.0", title_style))
+    story.append(Paragraph("PROOFLINE (v0.2.0)", title_style))
     story.append(
         Paragraph(
-            "Evidence-First AI Governance, Verifiable Quorum & Cryptographic Approval Platform<br/>"
+            "Content Governance and Source-Bound Approval System<br/>"
             "<b>Round 3 Final Product Submission Document</b>",
             subtitle_style,
         )
@@ -167,15 +167,15 @@ def generate_pdf(output_path: str):
         ],
         [
             Paragraph("<b>Automated Test Suite</b>", table_cell_style),
-            Paragraph("<b>128 passed in 34.74s</b> (100% clean test execution across 6 suites, 0 failures, 100% offline)", table_cell_style),
+            Paragraph("<b>147 passed in 22.07s</b> (100% clean test execution across 10 suites, 0 failures, 100% offline)", table_cell_style),
         ],
         [
             Paragraph("<b>Frontend Production Build</b>", table_cell_style),
-            Paragraph("Next.js 15.5.28, React 19, TypeScript — 0 errors, compiled in 6.8s", table_cell_style),
+            Paragraph("Next.js 15.5.28, React 19, TypeScript — 0 errors, compiled clean", table_cell_style),
         ],
         [
             Paragraph("<b>Core Technology Stack</b>", table_cell_style),
-            Paragraph("FastAPI, Python 3.13, Ed25519 Cryptography, PyPDF, SQLite WAL / Supabase Adapter, Next.js 15", table_cell_style),
+            Paragraph("FastAPI, Python 3.12, Ed25519 Cryptography, PyPDF, SQLite WAL / Supabase Adapter, Next.js 15", table_cell_style),
         ],
     ]
     t_meta = Table(meta_data, colWidths=[150, 380])
@@ -210,8 +210,8 @@ def generate_pdf(output_path: str):
     story.append(Paragraph("• <b>Verification Proof:</b> All 11 acceptance tests passing in <code>tests/test_round3_tasks.py</code> and verified in <code>scripts/smoke.py</code> Step 10.", bullet_style))
 
     story.append(Paragraph("Improvement 2: Benchmarked detection quality, enforced in CI (Q2)", h2_style))
-    story.append(Paragraph("• <b>Definition:</b> A frozen, human-labelled benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.", bullet_style))
-    story.append(Paragraph("• <b>Frozen Dataset & Manifest:</b> Exactly 30 human-labelled items in <code>benchmark/dataset.v1.jsonl</code> with category quotas (tone 4, unsupported claims 5, terminology 4, valid true-negatives 6, ambiguous 4, conflicting 4, malformed 3). Manifest with SHA-256 integrity hash (<code>213862facd...</code>) and Cohen's kappa (0.88).", bullet_style))
+    story.append(Paragraph("• <b>Definition:</b> A frozen, labelled by the team benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.", bullet_style))
+    story.append(Paragraph("• <b>Frozen Dataset & Manifest:</b> Exactly 30 items in <code>benchmark/dataset.v1.jsonl</code> with category quotas (tone 4, unsupported claims 5, terminology 4, valid true-negatives 6, ambiguous 4, conflicting 4, malformed 3). Manifest with SHA-256 integrity hash (<code>c5908dfc8ce6616f...</code>) and provenance (labelled by team; inter-annotator agreement not measured).", bullet_style))
     story.append(Paragraph("• <b>Evaluator & CI Gate:</b> Evaluator CLI (<code>scripts/eval_quality.py --offline|--live</code>) checks 12 quality gates (rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, zero quote hallucination tolerance). Regression gate (max 0.02 drop) and SHA verification enforced in GitHub Actions (<code>.github/workflows/quality.yml</code>).", bullet_style))
     story.append(Paragraph("• <b>Verification Proof:</b> All 7 acceptance tests passing in <code>tests/test_round3_quality.py</code> and <code>scripts/eval_quality.py --offline</code> passing all 12 gates.", bullet_style))
 
@@ -328,7 +328,7 @@ def generate_pdf(output_path: str):
         ],
         [
             Paragraph("<b>TOTAL</b>", table_cell_style),
-            Paragraph("<b>100 passed</b>", table_cell_style),
+            Paragraph("<b>147 passed</b>", table_cell_style),
             Paragraph("<b>Execution Time: 21.68s</b> (Python 3.13 / pytest 9.1.1)", table_cell_style),
         ],
     ]
@@ -367,12 +367,13 @@ def generate_pdf(output_path: str):
     # Section 6: Product Roadmap
     story.append(Paragraph("6. Product Roadmap and Future Development Plan", h1_style))
     story.append(Paragraph("• <b>Phase 1 (Months 1–3): Enterprise Readiness:</b> SAML 2.0 / Okta SCIM directory sync, continuous regulatory RSS feed ingestion (FDA, SEC, EU AI Act), and Git-style campaign document branching.", bullet_style))
-    story.append(Paragraph("• <b>Phase 2 (Months 4–6): Autonomous Compliance Scaling:</b> Multi-tenant vector RAG (hybrid BM25 + pgvector) for >100k page corpora, Google Docs/Figma compliance linting sidecar, and AWS CloudHSM signing.", bullet_style))
+    story.append(Paragraph("• <b>Phase 2 (Months 4–6): Automated Compliance Scaling:</b> Multi-tenant vector RAG (hybrid BM25 + pgvector) for >100k page corpora, Google Docs/Figma compliance linting sidecar, and AWS CloudHSM signing.", bullet_style))
     story.append(Paragraph("• <b>Phase 3 (Months 7–12): Continuous Assurance:</b> SOC-2 Type II continuous evidence attestations and full-page computer vision for multi-modal brochure layout and typography compliance.", bullet_style))
 
     doc.build(story)
     print(f"[SUCCESS] Generated official submission PDF at: {output_path}")
 
 if __name__ == "__main__":
+    generate_pdf("docs/Proofline_Round3_Submission.pdf")
     generate_pdf("docs/Proofline_2.0_Final_Product_Submission.pdf")
 
