@@ -343,20 +343,23 @@ def run_evaluation(
                     "pass": reg_ok,
                 })
 
+    ai_note = "AI layer: offline fixture replay (authored replies, not a model measurement)" if mode == "offline" else "AI layer: live model measurement"
     result_payload = {
         "version": 1,
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "mode": mode,
-        "model": "gemini-3.5-flash" if mode == "live" else None,
+        "model": "gemini-2.0-flash" if mode == "live" else None,
         "dataset": {
             "items": len(items),
             "sha256": actual_sha,
-            "kappa": manifest.get("kappa", 0.86),
+            "kappa": manifest.get("kappa"),
+            "provenance": manifest.get("provenance", "labelled by the team; inter-annotator agreement not measured"),
         },
         "layers": {
             "rules": rules_metrics,
             "ai": ai_metrics,
         },
+        "aiLayerNote": ai_note,
         "gates": gate_evals,
         "overall": "pass" if all_gates_pass else "fail",
     }

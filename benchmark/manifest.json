@@ -1,11 +1,9 @@
 {
   "version": 1,
-  "sha256": "213862facd9243dd3f7f50b3f4f0484e54a8c0c3b89fce873816be957255b093",
+  "sha256": "c5908dfc8ce6616fb01baf8de6bb0c48828ff28601f8383c1feafdb8a08dffdc",
   "items": 30,
-  "createdAt": "2026-10-29T17:25:39.004366+00:00",
-  "annotators": [
-    "Annotator A (Senior Compliance Officer)",
-    "Annotator B (Lead AI Safety Engineer)"
-  ],
-  "kappa": 0.86
+  "createdAt": "2026-10-30T18:52:49.263703+00:00",
+  "provenance": "labelled by the team; inter-annotator agreement not measured",
+  "annotators": [],
+  "kappa": null
 }

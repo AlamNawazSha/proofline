@@ -37,8 +37,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "tone", "quote": "revolutionary"}],
         "mustNotFlag": [],
-        "notes": "Human label: Unsubstantiated superlative 'revolutionary' violates tone guidelines (RULE-007).",
-        "source": "human"
+        "notes": "Team label: Unsubstantiated superlative 'revolutionary' violates brand tone guidelines requiring objective language.",
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-002",
@@ -48,8 +48,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "tone", "quote": "100% guaranteed"}],
         "mustNotFlag": [],
-        "notes": "Human label: Absolute promise '100% guaranteed' is strictly prohibited by brand policy (RULE-005).",
-        "source": "human"
+        "notes": "Team label: Absolute promise '100% guaranteed' is strictly prohibited by brand policy requiring qualified claims.",
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-003",
@@ -59,8 +59,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "tone", "quote": "guaranteed"}],
         "mustNotFlag": [],
-        "notes": "Human label: 'Guaranteed' violates prohibited promises rule (RULE-005).",
-        "source": "human"
+        "notes": "Team label: Promissory word 'guaranteed' violates brand guidelines prohibiting unconditional assurances.",
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-004",
@@ -70,8 +70,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "tone", "quote": "unbeatable"}],
         "mustNotFlag": [],
-        "notes": "Human label: Hype words 'unbeatable' and 'world-class' violate enterprise communications standard (RULE-006).",
-        "source": "human"
+        "notes": "Team label: Hype words 'unbeatable' and 'world-class' violate enterprise communications standard.",
+        "provenance": "team_labelled"
     },
 
     # 5-9: unsupported_claim (5 items)
@@ -84,7 +84,7 @@ items = [
         "expectedFindings": [{"category": "unsupported_claim", "quote": "99.999%"}],
         "mustNotFlag": [],
         "notes": "Human label: Governing SLA specification does not support five-nines 99.999%.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-006",
@@ -95,7 +95,7 @@ items = [
         "expectedFindings": [{"category": "unsupported_claim", "quote": "80%"}],
         "mustNotFlag": [],
         "notes": "Human label: Approved brand standard only supports up to 20% savings.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-007",
@@ -106,7 +106,7 @@ items = [
         "expectedFindings": [{"category": "unsupported_claim", "quote": "$9"}],
         "mustNotFlag": [],
         "notes": "Human label: Unverified pricing figure $9 lacks evidentiary backing.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-008",
@@ -117,7 +117,7 @@ items = [
         "expectedFindings": [{"category": "unsupported_claim", "quote": "50,000"}],
         "mustNotFlag": [],
         "notes": "Human label: Metric 50,000 is not substantiated in approved corporate references.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-009",
@@ -127,8 +127,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "unsupported_claim", "quote": "save 75%"}],
         "mustNotFlag": [],
-        "notes": "Human label: Savings claim of 75% directly violates max 20% limit in brand guide (RULE-002).",
-        "source": "human"
+        "notes": "Team label: Savings claim of 75% directly violates max 20% limit specified in brand guide.",
+        "provenance": "team_labelled"
     },
 
     # 10-13: terminology (4 items)
@@ -140,8 +140,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "terminology", "quote": "cheap plan"}],
         "mustNotFlag": ["affordable plan"],
-        "notes": "Human label: Prohibited term 'cheap plan' used instead of mandatory approved wording 'affordable plan' (RULE-001).",
-        "source": "human"
+        "notes": "Team label: Prohibited term 'cheap plan' used instead of mandatory approved wording 'affordable plan'.",
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-011",
@@ -151,8 +151,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "terminology", "quote": "Aurora Vault"}],
         "mustNotFlag": [],
-        "notes": "Human label: Disclosure of confidential internal codename Aurora Vault is forbidden (RULE-004).",
-        "source": "human"
+        "notes": "Team label: Disclosure of confidential internal launch codename Aurora Vault is strictly forbidden.",
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-012",
@@ -162,8 +162,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "terminology", "quote": "guarantee"}],
         "mustNotFlag": [],
-        "notes": "Human label: 'Guarantee' violates strict brand guidelines prohibiting promissory assurances (RULE-005).",
-        "source": "human"
+        "notes": "Team label: Promissory word 'guarantee' violates brand policy prohibiting absolute assurances.",
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-013",
@@ -173,8 +173,8 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "terminology", "quote": "cheap plans"}],
         "mustNotFlag": [],
-        "notes": "Human label: Plural variant 'cheap plans' violates brand terminology boundaries (RULE-001).",
-        "source": "human"
+        "notes": "Team label: Plural variant 'cheap plans' violates brand terminology boundaries; use approved term 'affordable plan'.",
+        "provenance": "team_labelled"
     },
 
     # 14-19: valid_must_not_flag (6 items, expectedFindings: [])
@@ -187,7 +187,7 @@ items = [
         "expectedFindings": [],
         "mustNotFlag": ["affordable plan", "saved up to 20%"],
         "notes": "Human label: Ground truth fully compliant passage verbatim from approved source pack.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-015",
@@ -198,7 +198,7 @@ items = [
         "expectedFindings": [],
         "mustNotFlag": ["clear and professional"],
         "notes": "Human label: Factual brand description adhering to approved voice guidelines.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-016",
@@ -209,7 +209,7 @@ items = [
         "expectedFindings": [],
         "mustNotFlag": ["helpful staff"],
         "notes": "Human label: Compliant descriptive marketing copy with no prohibited terms or unbacked numbers.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-017",
@@ -220,7 +220,7 @@ items = [
         "expectedFindings": [],
         "mustNotFlag": ["clear and informative"],
         "notes": "Human label: Professional description with zero policy violations.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-018",
@@ -231,7 +231,7 @@ items = [
         "expectedFindings": [],
         "mustNotFlag": ["affordable plan"],
         "notes": "Human label: Uses mandatory preferred phrasing 'affordable plan' without exaggeration.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-019",
@@ -242,7 +242,7 @@ items = [
         "expectedFindings": [],
         "mustNotFlag": ["saved up to 20%", "Results vary"],
         "notes": "Human label: Compliant savings claim including required qualifier 'Results vary'.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
 
     # 20-23: ambiguous (4 items)
@@ -255,7 +255,7 @@ items = [
         "expectedFindings": [{"category": "ambiguous", "quote": "save approximately 20%"}],
         "mustNotFlag": [],
         "notes": "Human label: 'Approximately 20%' is ambiguous compared to mandated 'up to 20%' qualifier.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-021",
@@ -266,7 +266,7 @@ items = [
         "expectedFindings": [{"category": "ambiguous", "quote": "virtually continuous availability"}],
         "mustNotFlag": [],
         "notes": "Human label: Vague availability claim obscures contractually committed SLA.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-022",
@@ -277,7 +277,7 @@ items = [
         "expectedFindings": [{"category": "ambiguous", "quote": "substantially faster"}],
         "mustNotFlag": [],
         "notes": "Human label: 'Substantially faster' lacks quantifiable benchmark telemetry.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-023",
@@ -288,7 +288,7 @@ items = [
         "expectedFindings": [{"category": "ambiguous", "quote": "low-cost plan"}],
         "mustNotFlag": [],
         "notes": "Human label: 'Low-cost plan' skirts the boundary of prohibited 'cheap plan' terminology.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
 
     # 24-27: conflicting_sources (4 items)
@@ -301,7 +301,7 @@ items = [
         "expectedFindings": [{"category": "conflicting_sources", "quote": "ISO-27001 certificate valid through 2024"}],
         "mustNotFlag": [],
         "notes": "Human label: Legacy guide v1 claims validity through 2024, but Master Spec v2 notes certificate was revoked in 2023.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-025",
@@ -312,7 +312,7 @@ items = [
         "expectedFindings": [{"category": "conflicting_sources", "quote": "500GB storage quota"}],
         "mustNotFlag": [],
         "notes": "Human label: Guide v1 states 500GB while Spec v2 limits storage to 250GB.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-026",
@@ -323,7 +323,7 @@ items = [
         "expectedFindings": [{"category": "conflicting_sources", "quote": "savings reaching 35%"}],
         "mustNotFlag": [],
         "notes": "Human label: Early pilot doc cites 35%, but audited master spec caps verified savings at 18%.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-027",
@@ -334,7 +334,7 @@ items = [
         "expectedFindings": [{"category": "conflicting_sources", "quote": "15-minute response time SLA"}],
         "mustNotFlag": [],
         "notes": "Human label: Legacy doc promises 15 minutes, whereas current SLA specification commits to 1 hour.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
 
     # 28-30: malformed_model (3 items)
@@ -347,7 +347,7 @@ items = [
         "expectedFindings": [{"category": "malformed_model", "quote": "zero packet loss"}],
         "mustNotFlag": [],
         "notes": "Human label: Model response contains malformed JSON syntax violating schema parser.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-029",
@@ -358,7 +358,7 @@ items = [
         "expectedFindings": [{"category": "malformed_model", "quote": "single-click multi-cloud deployment"}],
         "mustNotFlag": [],
         "notes": "Human label: Model hallucinates a citation passage not present in the supplied source document.",
-        "source": "human"
+        "provenance": "team_labelled"
     },
     {
         "id": "BM-030",
@@ -369,7 +369,7 @@ items = [
         "expectedFindings": [{"category": "malformed_model", "quote": "instant failover"}],
         "mustNotFlag": [],
         "notes": "Human label: Model generates empty or non-compliant category taxonomy.",
-        "source": "human"
+        "provenance": "team_labelled"
     }
 ]
 
@@ -388,8 +388,9 @@ manifest = {
     "sha256": sha256,
     "items": 30,
     "createdAt": datetime.now(timezone.utc).isoformat(),
-    "annotators": ["Annotator A (Senior Compliance Officer)", "Annotator B (Lead AI Safety Engineer)"],
-    "kappa": 0.86
+    "provenance": "labelled by the team; inter-annotator agreement not measured",
+    "annotators": [],
+    "kappa": None
 }
 
 with open("benchmark/manifest.json", "w", encoding="utf-8", newline="\n") as f:
