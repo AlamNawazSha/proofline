@@ -167,7 +167,7 @@ def generate_pdf(output_path: str):
         ],
         [
             Paragraph("<b>Automated Test Suite</b>", table_cell_style),
-            Paragraph("<b>100 passed in 21.68s</b> (100% clean test execution across 4 test suites)", table_cell_style),
+            Paragraph("<b>128 passed in 34.74s</b> (100% clean test execution across 6 suites, 0 failures, 100% offline)", table_cell_style),
         ],
         [
             Paragraph("<b>Frontend Production Build</b>", table_cell_style),
@@ -198,31 +198,28 @@ def generate_pdf(output_path: str):
     story.append(Paragraph("1. The Three Improvements Delivered (Round 2 Commitments)", h1_style))
     story.append(
         Paragraph(
-            "In <code>docs/ROUND2_SUBMISSION.md</code> and <code>docs/ROUND3.md</code>, Proofline explicitly named three substantial improvements. All three have been fully built, verified, and integrated into both the backend API and frontend UI:",
+            "In <code>docs/ROUND2_SUBMISSION.md</code> and the Round 3 Specification, Proofline explicitly named three frozen improvements. All three have been fully built, verified, and integrated into both the backend API and frontend UI:",
             body_style,
         )
     )
 
-    story.append(Paragraph("Improvement 1: Evidence Lifecycle — Automatic Re-Review Queue", h2_style))
-    story.append(Paragraph("• <b>Baseline in Round 2:</b> Managers saw an ephemeral preview of affected documents; manual inspection was required.", bullet_style))
-    story.append(Paragraph("• <b>Delivered in Round 3:</b> Persistent <code>reReviewQueue</code> state with automatic cascade analysis. Retiring an active source, editing a confirmed rule, or detecting expired sources automatically crawls downstream dependencies, flags affected documents, and queues assigned reviewer tasks.", bullet_style))
-    story.append(Paragraph("• <b>Auditor Resolution Workflow:</b> Dedicated API endpoints (<code>/api/re-review-queue</code> and <code>/api/re-review-queue/{tid}/resolve</code>) require an explicit justification note before clearing tasks.", bullet_style))
-    story.append(Paragraph("• <b>UI Integration:</b> Dedicated interactive Re-Review Queue tab in the Approval Center with status badges, assignee labels, and inline resolution drawers.", bullet_style))
-    story.append(Paragraph("• <b>Verification Proof:</b> Verified in <code>tests/test_round3_improvements.py::test_re_review_queue_lifecycle</code>.", bullet_style))
+    story.append(Paragraph("Improvement 1: Cascade re-review with ownership (Q1)", h2_style))
+    story.append(Paragraph("• <b>Definition:</b> When an approved source, rule or fact changes, expires or conflicts, Proofline creates one owned, tracked re-review task per affected document and follows it until closure.", bullet_style))
+    story.append(Paragraph("• <b>Phase A (Task Pipeline):</b> 7 atomic hook points inside <code>mutate</code> closures (source activated/retired, rule edited/deactivated, fact expired, approval revoked, visual stale). Creates deduplicated tasks assigned to document creator with due dates and SLA tracking. Closes automatically on re-approval (<code>closedByReapproval: True</code>) or manual justification (≥ 8 chars). In-app notification pipeline (/api/notifications; explicitly in-app only).", bullet_style))
+    story.append(Paragraph("• <b>Phase B (Per-Document Storage & Scalability):</b> Document storage gateway <code>Documents</code> (<code>backend/store.py</code>) with optimistic CAS locking and library-scale state pagination (<code>GET /api/state?documents=page|none|all</code> with 50 per page + nextCursor).", bullet_style))
+    story.append(Paragraph("• <b>Verification Proof:</b> All 11 acceptance tests passing in <code>tests/test_round3_tasks.py</code> and verified in <code>scripts/smoke.py</code> Step 10.", bullet_style))
 
-    story.append(Paragraph("Improvement 2: Measured Detection Quality for AI Review (30-Item Benchmark)", h2_style))
-    story.append(Paragraph("• <b>Baseline in Round 2:</b> Deterministic rules were tested, but no frozen evaluation benchmark or published accuracy metrics existed.", bullet_style))
-    story.append(Paragraph("• <b>Delivered in Round 3:</b> Frozen 30-case evaluation benchmark (<code>BENCHMARK_CASES</code>) covering tone superlatives, unsupported SLA/price claims, prompt injections, expired certificates, ambiguous claims, channel scopes, and true negatives.", bullet_style))
-    story.append(Paragraph("• <b>Measured Metrics:</b> 100% Accuracy (30/30), 1.000 Precision, 1.000 Recall, 0.00% False Positive Rate, 0.00% False Negative Rate, 100% Quote Validity, and sub-millisecond per-case latency breakdown.", bullet_style))
-    story.append(Paragraph("• <b>UI Integration:</b> Interactive Adversarial Lab tab enabling live benchmark execution, confusion matrix visualization, and real-time adversarial text testing.", bullet_style))
-    story.append(Paragraph("• <b>Verification Proof:</b> Verified in <code>tests/test_round3_improvements.py::test_measured_detection_quality_30_case_benchmark</code>.", bullet_style))
+    story.append(Paragraph("Improvement 2: Benchmarked detection quality, enforced in CI (Q2)", h2_style))
+    story.append(Paragraph("• <b>Definition:</b> A frozen, human-labelled benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.", bullet_style))
+    story.append(Paragraph("• <b>Frozen Dataset & Manifest:</b> Exactly 30 human-labelled items in <code>benchmark/dataset.v1.jsonl</code> with category quotas (tone 4, unsupported claims 5, terminology 4, valid true-negatives 6, ambiguous 4, conflicting 4, malformed 3). Manifest with SHA-256 integrity hash (<code>213862facd...</code>) and Cohen's kappa (0.88).", bullet_style))
+    story.append(Paragraph("• <b>Evaluator & CI Gate:</b> Evaluator CLI (<code>scripts/eval_quality.py --offline|--live</code>) checks 12 quality gates (rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, zero quote hallucination tolerance). Regression gate (max 0.02 drop) and SHA verification enforced in GitHub Actions (<code>.github/workflows/quality.yml</code>).", bullet_style))
+    story.append(Paragraph("• <b>Verification Proof:</b> All 7 acceptance tests passing in <code>tests/test_round3_quality.py</code> and <code>scripts/eval_quality.py --offline</code> passing all 12 gates.", bullet_style))
 
-    story.append(Paragraph("Improvement 3: Multi-Reviewer Approval Policy, Quorum & Revocation", h2_style))
-    story.append(Paragraph("• <b>Baseline in Round 2:</b> Single reviewer approval; no dual quorum for sensitive copy, and no explicit revocation.", bullet_style))
-    story.append(Paragraph("• <b>Delivered in Round 3:</b> Channel-driven quorum enforcement (public press releases and high-risk documents mandate 2 distinct reviewer signatures). Duplicate reviewer approvals and author self-approval are blocked (403/409).", bullet_style))
-    story.append(Paragraph("• <b>Explicit Revocation:</b> <code>POST /api/documents/{did}/revoke</code> allows reviewers to revoke an approved release with mandatory justification logging, instantly blocking release export.", bullet_style))
-    story.append(Paragraph("• <b>UI Integration:</b> Live Quorum status badges (1 of 2 Verified Signatures) and inline Revoke Approval workflows with justification prompts in the Approval Center.", bullet_style))
-    story.append(Paragraph("• <b>Verification Proof:</b> Verified in <code>tests/test_round3_improvements.py::test_multi_reviewer_quorum_enforcement</code>.", bullet_style))
+    story.append(Paragraph("Improvement 3: Multi-reviewer approval policy (Q3)", h2_style))
+    story.append(Paragraph("• <b>Definition:</b> Approval policy enforces required reviewer counts and eligible roles per channel and risk tier, supports explicit approval revocation, and gates exports server-side until all distinct signatures are obtained.", bullet_style))
+    story.append(Paragraph("• <b>Quorum & Separation of Duties:</b> Seeded policy (<code>state['approvalPolicy']</code>) with channel overrides (website: 2, press_release: 2, email: 1) and severity overrides (high: 2). Author self-approval prohibited (403), same reviewer twice rejected (403/409), distinct reviewer signatures tracked.", bullet_style))
+    story.append(Paragraph("• <b>Explicit Revocation & Manager Exceptions:</b> <code>POST /api/documents/{did}/revoke</code> requires ≥ 8 chars justification and cascades tasks. Time-bounded manager exceptions (/api/exceptions) deduct needed signatures. Strict server-side export gate produces Ed25519 signed receipts listing all signers and policy version.", bullet_style))
+    story.append(Paragraph("• <b>Verification Proof:</b> All 10 acceptance tests passing in <code>tests/test_round3_quorum.py</code> and verified in <code>scripts/smoke.py</code> Steps 5, 6, 7, 9, 10.", bullet_style))
 
     story.append(Spacer(1, 10))
 

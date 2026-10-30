@@ -21,6 +21,28 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
+def add_hours(iso_str: str, hours: int) -> str:
+    from datetime import datetime, timedelta, timezone
+    try:
+        dt = datetime.fromisoformat(iso_str)
+    except Exception:
+        dt = datetime.now(timezone.utc)
+    return (dt + timedelta(hours=hours)).isoformat()
+
+
+def is_past(iso_str: str) -> bool:
+    from datetime import datetime, timezone
+    if not iso_str:
+        return False
+    try:
+        dt = datetime.fromisoformat(iso_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt < datetime.now(timezone.utc)
+    except Exception:
+        return False
+
+
 def digest(doc):
     data = {k: doc.get(k) for k in ("text", "context", "visualCheckIds")}
     return hashlib.sha256(
@@ -210,6 +232,23 @@ def seed(name="Northstar Studio"):
         "campaigns": [],
         "jobs": [],
         "files": [],
+        "approvalPolicy": {
+            "version": 1,
+            "byChannel": {
+                "website": {"required": 2, "roles": ["reviewer", "manager"], "distinctUsers": True},
+                "press_release": {"required": 2, "roles": ["reviewer", "manager"], "distinctUsers": True},
+                "email":   {"required": 1, "roles": ["reviewer", "manager"], "distinctUsers": True},
+                "default": {"required": 1, "roles": ["reviewer", "manager"], "distinctUsers": True},
+            },
+            "bySeverity": {"high": {"required": 2}},
+            "escalation": {"hours": 24, "to": "manager"},
+            "updatedAt": now(),
+            "updatedBy": "system",
+        },
+        "exceptions": [],
+        "tasks": [],
+        "tasksPolicy": {"dedupe": True, "autoCloseOnReapproval": True},
+        "notifications": [],
         "createdAt": now(),
     }
 
@@ -430,7 +469,11 @@ def new_document(title, text, actor, context=None):
         "comments": [],
         "review": None,
         "decision": None,
+        "approvals": [],
         "submitted": False,
+        "submittedAt": None,
+        "reviewDueAt": None,
+        "escalatedAt": None,
         "createdAt": now(),
         "updatedAt": now(),
     }
@@ -948,7 +991,138 @@ def open_findings(doc):
     ]
 
 
-def readiness(state, doc):
+def required_approvals(state, doc) -> dict:
+    """Resolve required approvals policy by severity, channel, and active exceptions."""
+    policy = state.get("approvalPolicy") or {
+        "version": 1,
+        "byChannel": {
+            "website": {"required": 2, "roles": ["reviewer", "manager"], "distinctUsers": True},
+            "press_release": {"required": 2, "roles": ["reviewer", "manager"], "distinctUsers": True},
+            "email": {"required": 1, "roles": ["reviewer", "manager"], "distinctUsers": True},
+            "default": {"required": 1, "roles": ["reviewer", "manager"], "distinctUsers": True},
+        },
+        "bySeverity": {"high": {"required": 2}},
+        "escalation": {"hours": 24, "to": "manager"},
+    }
+
+    SEV_WEIGHT = {"critical": 5, "high": 4, "medium": 3, "low": 2, "info": 1}
+    doc_findings = doc.get("findings", [])
+    open_f = open_findings(doc)
+    eval_f = open_f if open_f else [f for f in doc_findings if f.get("revision", doc.get("revision")) == doc.get("revision")]
+
+    max_sev = None
+    if eval_f:
+        max_sev = max((f.get("severity", "medium").lower() for f in eval_f), key=lambda s: SEV_WEIGHT.get(s, 0))
+
+    channel = (doc.get("context") or {}).get("channel", "default")
+    by_sev = policy.get("bySeverity", {}).get(max_sev) if max_sev else None
+    if not by_sev and max_sev in ("critical", "high") and "high" in policy.get("bySeverity", {}):
+        by_sev = policy["bySeverity"]["high"]
+
+    by_chan = policy.get("byChannel", {}).get(channel)
+    default_chan = policy.get("byChannel", {}).get("default", {"required": 1, "roles": ["reviewer", "manager"], "distinctUsers": True})
+
+    if by_sev:
+        base = by_sev
+        source = "severity"
+    elif by_chan:
+        base = by_chan
+        source = "channel"
+    else:
+        base = default_chan
+        source = "default"
+
+    required = base.get("required", 1)
+    roles = base.get("roles") or (by_chan.get("roles") if by_chan else None) or default_chan.get("roles", ["reviewer", "manager"])
+    distinct_users = base.get("distinctUsers", True)
+    escalation_hours = policy.get("escalation", {}).get("hours", 24)
+
+    # Check active exceptions
+    exception_id = None
+    for exc in state.get("exceptions", []):
+        if exc.get("revokedAt") or is_past(exc.get("expiresAt")):
+            continue
+        scope = exc.get("scope", {})
+        if (scope.get("type") == "document" and scope.get("value") == doc["id"]) or (
+            scope.get("type") == "channel" and scope.get("value") == channel
+        ):
+            max_miss = exc.get("maxSignaturesMissing", 1)
+            required = max(1, required - max_miss)
+            exception_id = exc["id"]
+            source = "exception"
+            break
+
+    return {
+        "required": required,
+        "roles": roles,
+        "distinctUsers": distinct_users,
+        "escalationHours": escalation_hours,
+        "exceptionId": exception_id,
+        "source": source,
+    }
+
+
+def quorum_state(state, doc) -> dict:
+    """Evaluate distinct valid signature count against policy required quorum."""
+    req = required_approvals(state, doc)
+    required = req["required"]
+    current_digest = digest(doc)
+
+    approvals = doc.get("approvals", [])
+    if not approvals and doc.get("decision") and doc["decision"].get("outcome") == "approved":
+        approvals = [{
+            "id": doc["decision"].get("id", uid()),
+            "outcome": "approved",
+            "reviewerId": doc["decision"].get("reviewerId") or doc["decision"].get("by") or "reviewer",
+            "reviewerName": doc["decision"].get("reviewerName") or "Reviewer",
+            "role": doc["decision"].get("role", "reviewer"),
+            "revision": doc["decision"].get("revision", doc.get("revision")),
+            "sourceVersion": doc["decision"].get("sourceVersion", state.get("sourceVersion")),
+            "fingerprint": doc["decision"].get("fingerprint", current_digest),
+            "manualCoverage": bool(doc["decision"].get("manualCoverage")),
+            "at": doc["decision"].get("at", now()),
+            "policyVersion": doc["decision"].get("policyVersion", 1),
+        }]
+
+    valid_signers = set()
+    stale_signatures = 0
+    dec = doc.get("decision") or {}
+    revoked_at = doc.get("revokedAt") or (
+        dec.get("revokedAt")
+        if dec.get("revision") == doc.get("revision")
+        else None
+    )
+
+    for app in approvals:
+        if app.get("outcome") != "approved":
+            continue
+        rev_ok = app.get("revision") == doc.get("revision")
+        src_ok = app.get("sourceVersion") == state.get("sourceVersion")
+        fp_ok = app.get("fingerprint") == current_digest
+        not_self = app.get("reviewerId") != doc.get("creatorId")
+        not_revoked = not (revoked_at and app.get("at", "") <= revoked_at)
+
+        if rev_ok and src_ok and fp_ok and not_self and not_revoked:
+            valid_signers.add(app["reviewerId"])
+        else:
+            stale_signatures += 1
+
+    received = len(valid_signers)
+    satisfied = received >= required
+    missing = max(0, required - received)
+
+    next_escalation = doc.get("reviewDueAt")
+    return {
+        "required": required,
+        "received": received,
+        "satisfied": satisfied,
+        "missing": missing,
+        "staleSignatures": stale_signatures,
+        "nextEscalationAt": next_escalation,
+    }
+
+
+def readiness(state, doc, enforce_quorum=False):
     reasons = []
     r, d = doc.get("review"), doc.get("decision")
     if any(c["kind"] == "source" for c in conflicts(state, [])):
@@ -994,6 +1168,20 @@ def readiness(state, doc):
         )
     elif d["reviewerId"] == doc["creatorId"]:
         reasons.append("Self-approval is not allowed.")
+
+    # Quorum and Revocation
+    revoked_at = doc.get("revokedAt") or (
+        d.get("revokedAt") if d and d.get("revision") == doc.get("revision") else None
+    )
+    if revoked_at:
+        reasons.append(
+            f"Approval has been revoked: {doc.get('revokeReason') or (d and d.get('revokeReason')) or 'Revoked by authorized reviewer'}."
+        )
+    elif enforce_quorum and state.get("approvalPolicy"):
+        q = quorum_state(state, doc)
+        if not q["satisfied"]:
+            reasons.append(f"Quorum not met: received {q['received']} of {q['required']} required signatures.")
+
     for vid in doc.get("visualCheckIds", []):
         v = next((v for v in state["visualChecks"] if v["id"] == vid), None)
         if (
@@ -1012,12 +1200,188 @@ def readiness(state, doc):
     }
 
 
+def task_key(document_id, reason, trigger_id) -> str:
+    """Unique sha256 hash preventing duplicate tasks for the same trigger."""
+    raw = f"{document_id}:{reason}:{trigger_id}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def affected_documents(state, *, sourceId=None, ruleId=None, factId=None) -> list:
+    """Identify documents affected by a source, rule, or fact change.
+    MUST NOT include documents that produce no findings and hold no approval.
+    """
+    docs = state.get("documents", [])
+    affected = []
+
+    if sourceId:
+        src_rules = [r for r in state.get("rules", []) if r.get("sourceId") == sourceId and r.get("active")]
+        for d in docs:
+            has_app = bool(d.get("decision") and d["decision"].get("outcome") == "approved")
+            has_finding = any(f.get("sourceId") == sourceId for f in d.get("findings", []))
+            has_app_rule = any(applicable(r, d) for r in src_rules)
+            if has_app or has_finding or (has_app_rule and (d.get("findings") or has_app)):
+                affected.append(d)
+
+    elif ruleId:
+        target_rule = next((r for r in state.get("rules", []) if r.get("id") == ruleId), None)
+        for d in docs:
+            has_app = bool(d.get("decision") and d["decision"].get("outcome") == "approved")
+            has_finding = any(f.get("ruleId") == ruleId for f in d.get("findings", []))
+            is_app = applicable(target_rule, d) if target_rule else False
+            if (is_app or has_finding) and (has_app or d.get("findings")):
+                affected.append(d)
+
+    elif factId:
+        for d in docs:
+            r = d.get("review")
+            dec = d.get("decision")
+            ref = (r and factId in str(r)) or (dec and factId in str(dec))
+            has_app = bool(dec and dec.get("outcome") == "approved")
+            if ref and (has_app or d.get("findings")):
+                affected.append(d)
+
+    return affected
+
+
+def cascade_tasks(state, *, reason, trigger_id, reason_detail, actor, dueHours=72) -> list:
+    """Idempotently cascade re-review tasks for affected documents."""
+    if reason in ("source_updated", "source_retired"):
+        sid = trigger_id if not str(trigger_id).startswith("v") else None
+        if not sid:
+            aff_docs = [
+                d for d in state.get("documents", [])
+                if (d.get("decision") and d["decision"].get("outcome") == "approved") or d.get("findings")
+            ]
+        else:
+            aff_docs = affected_documents(state, sourceId=sid)
+    elif reason in ("rule_changed", "rule_deactivated"):
+        rid = str(trigger_id).split(":")[0]
+        aff_docs = affected_documents(state, ruleId=rid)
+    elif reason == "approval_revoked":
+        aff_docs = [
+            d for d in state.get("documents", [])
+            if d.get("id") == trigger_id or (d.get("decision") and d["decision"].get("id") == trigger_id)
+        ]
+    elif reason == "fact_expired":
+        aff_docs = affected_documents(state, factId=trigger_id)
+    elif reason == "visual_check_stale":
+        aff_docs = [
+            d for d in state.get("documents", [])
+            if trigger_id in d.get("visualCheckIds", [])
+        ]
+    else:
+        aff_docs = []
+
+    tasks = state.setdefault("tasks", [])
+    created = []
+
+    for doc in aff_docs:
+        key = task_key(doc["id"], reason, trigger_id)
+        if any(t.get("dedupeKey") == key and t.get("status") in ("open", "in_progress") for t in tasks):
+            continue
+
+        task_id = uid()
+        t = {
+            "id": task_id,
+            "workspaceId": state.get("id") or "default",
+            "documentId": doc["id"],
+            "documentTitle": doc.get("title", "Untitled Document"),
+            "ownerId": doc.get("creatorId", actor["id"]),
+            "ownerName": doc.get("creatorName", actor["name"]),
+            "reason": reason,
+            "reasonDetail": reason_detail,
+            "status": "open",
+            "assigneeId": doc.get("creatorId", actor["id"]),
+            "assigneeName": doc.get("creatorName", actor["name"]),
+            "createdAt": now(),
+            "dueAt": add_hours(now(), dueHours),
+            "closedAt": None,
+            "closedBy": None,
+            "closedByReapproval": False,
+            "dedupeKey": key,
+            "triggerId": str(trigger_id),
+            "escalatedAt": None,
+        }
+        tasks.append(t)
+        created.append(t)
+        event(state, actor, "Created re-review task", f"Task for '{doc['title']}': {reason_detail}", doc["id"])
+
+        state.setdefault("notifications", []).append({
+            "id": uid(),
+            "userId": t["assigneeId"],
+            "kind": "task_assigned",
+            "taskId": t["id"],
+            "documentId": doc["id"],
+            "text": f"Re-review task assigned for '{doc['title']}': {reason_detail}",
+            "readAt": None,
+            "createdAt": now(),
+        })
+
+    return created
+
+
+def close_tasks_for_document(state, doc, actor, *, via="reapproval") -> list:
+    """Closes all open/in_progress tasks for a document upon reapproval or manual closure."""
+    closed = []
+    for t in state.get("tasks", []):
+        if t.get("documentId") == doc["id"] and t.get("status") in ("open", "in_progress"):
+            t["status"] = "closed"
+            t["closedAt"] = now()
+            t["closedBy"] = actor["id"]
+            t["closedByReapproval"] = (via == "reapproval")
+            closed.append(t)
+            event(state, actor, "Closed re-review task", f"Task {t['id']} closed via {via}", doc["id"])
+
+            if actor["id"] != t.get("ownerId"):
+                state.setdefault("notifications", []).append({
+                    "id": uid(),
+                    "userId": t["ownerId"],
+                    "kind": "task_closed",
+                    "taskId": t["id"],
+                    "documentId": doc["id"],
+                    "text": f"Task for '{doc['title']}' was closed by {actor['name']}",
+                    "readAt": None,
+                    "createdAt": now(),
+                })
+
+    return closed
+
+
+def open_tasks(state, documentId=None) -> list:
+    """Return all open or in_progress tasks, optionally filtered by documentId."""
+    tasks = [t for t in state.get("tasks", []) if t.get("status") in ("open", "in_progress")]
+    if documentId:
+        tasks = [t for t in tasks if t.get("documentId") == documentId]
+    return tasks
+
+
+def task_summary(state) -> dict:
+    """Compute summary counts for tasks: open, escalated, closedToday, oldestOpenAt."""
+    tasks = state.get("tasks", [])
+    open_cnt = sum(1 for t in tasks if t.get("status") in ("open", "in_progress"))
+    esc_cnt = sum(1 for t in tasks if t.get("escalatedAt") and t.get("status") in ("open", "in_progress"))
+    today_str = date.today().isoformat()
+    closed_today = sum(1 for t in tasks if t.get("status") == "closed" and str(t.get("closedAt", "")).startswith(today_str))
+
+    open_dates = [t.get("createdAt") for t in tasks if t.get("status") in ("open", "in_progress") and t.get("createdAt")]
+    oldest = min(open_dates) if open_dates else None
+
+    return {
+        "open": open_cnt,
+        "escalated": esc_cnt,
+        "closedToday": closed_today,
+        "oldestOpenAt": oldest,
+    }
+
+
 def document_status(state, doc):
     d = doc.get("decision")
+    if d and (d.get("outcome") == "revoked" or d.get("revokedAt") or doc.get("revokedAt")):
+        return "Approval revoked"
     if d and (
-        d["revision"] != doc["revision"] or d["sourceVersion"] != state["sourceVersion"]
+        d.get("revision") != doc.get("revision") or d.get("sourceVersion") != state.get("sourceVersion")
     ):
-        return "Approval outdated" if d["outcome"] == "approved" else "Needs re-review"
+        return "Approval outdated" if d.get("outcome") == "approved" else "Needs re-review"
     if d and d["outcome"] == "approved":
         return (
             "Approved"

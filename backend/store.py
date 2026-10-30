@@ -13,11 +13,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 SCHEMA = {
     "workspaces": "CREATE TABLE IF NOT EXISTS workspaces(id TEXT PRIMARY KEY,state TEXT NOT NULL,rev INTEGER NOT NULL DEFAULT 1)",
+    "documents": "CREATE TABLE IF NOT EXISTS documents(workspace_id TEXT NOT NULL, doc_id TEXT NOT NULL, doc TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, PRIMARY KEY(workspace_id, doc_id))",
     "users": "CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, name TEXT NOT NULL, created_at TEXT NOT NULL)",
     "memberships": "CREATE TABLE IF NOT EXISTS memberships(workspace_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL, display_name TEXT NOT NULL, PRIMARY KEY(workspace_id,user_id))",
     "idx_users_email": "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
     "idx_memberships_workspace": "CREATE INDEX IF NOT EXISTS idx_memberships_workspace ON memberships(workspace_id)",
     "idx_memberships_user": "CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id)",
+    "idx_documents_workspace": "CREATE INDEX IF NOT EXISTS idx_documents_workspace ON documents(workspace_id)",
 }
 
 
@@ -32,10 +34,111 @@ def ensure_schema(c):
         c.execute(statement)
 
 
+class Documents:
+    """Document gateway implementing per-document storage and optimistic locking."""
+
+    def __init__(self, store):
+        self.store = store
+
+    def list_ids(self, wid) -> list:
+        if hasattr(self.store, "db"):
+            with self.store.db() as c:
+                rows = c.execute("SELECT doc_id FROM documents WHERE workspace_id=?", (wid,)).fetchall()
+            return [r[0] for r in rows]
+        res = self.store.request("GET", f"/rest/v1/proofline_documents?workspace_id=eq.{wid}&select=doc_id")
+        return [r["doc_id"] for r in (res or [])]
+
+    def read(self, wid, did) -> tuple:
+        if hasattr(self.store, "db"):
+            with self.store.db() as c:
+                row = c.execute("SELECT doc, revision FROM documents WHERE workspace_id=? AND doc_id=?", (wid, did)).fetchone()
+            if not row:
+                raise HTTPException(404, "Document not found")
+            return json.loads(row[0]), row[1]
+        res = self.store.request("GET", f"/rest/v1/proofline_documents?workspace_id=eq.{wid}&doc_id=eq.{did}&select=doc,revision")
+        if not res:
+            raise HTTPException(404, "Document not found")
+        return res[0]["doc"], res[0]["revision"]
+
+    def read_many(self, wid, ids) -> dict:
+        if not ids:
+            return {}
+        if hasattr(self.store, "db"):
+            with self.store.db() as c:
+                placeholders = ",".join("?" for _ in ids)
+                rows = c.execute(f"SELECT doc_id, doc FROM documents WHERE workspace_id=? AND doc_id IN ({placeholders})", [wid] + list(ids)).fetchall()
+            return {r[0]: json.loads(r[1]) for r in rows}
+        res = self.store.request("GET", f"/rest/v1/proofline_documents?workspace_id=eq.{wid}&doc_id=in.({','.join(ids)})&select=doc_id,doc")
+        return {r["doc_id"]: r["doc"] for r in (res or [])}
+
+    def write(self, wid, did, doc, expected=None) -> None:
+        now_iso = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+        if hasattr(self.store, "db"):
+            with self.store.lock, self.store.db() as c:
+                c.execute("BEGIN IMMEDIATE")
+                if expected is None:
+                    c.execute(
+                        "INSERT INTO documents(workspace_id, doc_id, doc, revision, updated_at) VALUES(?,?,?,1,?) "
+                        "ON CONFLICT(workspace_id, doc_id) DO UPDATE SET doc=excluded.doc, revision=documents.revision+1, updated_at=excluded.updated_at",
+                        (wid, did, json.dumps(doc), now_iso),
+                    )
+                else:
+                    cur = c.execute(
+                        "UPDATE documents SET doc=?, revision=revision+1, updated_at=? WHERE workspace_id=? AND doc_id=? AND revision=?",
+                        (json.dumps(doc), now_iso, wid, did, expected),
+                    )
+                    if cur.rowcount == 0:
+                        raise HTTPException(409, "Document version mismatch (optimistic lock failed)")
+            return
+
+        if expected is None:
+            self.store.request("POST", "/rest/v1/proofline_documents", {
+                "workspace_id": wid, "doc_id": did, "doc": doc, "revision": 1, "updated_at": now_iso
+            })
+        else:
+            success = self.store.request("POST", "/rest/v1/rpc/proofline_cas_document", {
+                "p_workspace": wid, "p_doc": did, "p_expected": expected, "p_doc_state": doc
+            })
+            if not success:
+                raise HTTPException(409, "Document version mismatch (optimistic lock failed)")
+
+    def delete(self, wid, did) -> None:
+        if hasattr(self.store, "db"):
+            with self.store.lock, self.store.db() as c:
+                c.execute("DELETE FROM documents WHERE workspace_id=? AND doc_id=?", (wid, did))
+            return
+        self.store.request("DELETE", f"/rest/v1/proofline_documents?workspace_id=eq.{wid}&doc_id=eq.{did}")
+
+    def migrate_from_state(self, wid, state) -> int:
+        docs = state.get("documents", [])
+        moved = 0
+        now_iso = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+        for d in docs:
+            did = d["id"]
+            if hasattr(self.store, "db"):
+                with self.store.lock, self.store.db() as c:
+                    existing = c.execute("SELECT 1 FROM documents WHERE workspace_id=? AND doc_id=?", (wid, did)).fetchone()
+                    if not existing:
+                        c.execute(
+                            "INSERT INTO documents(workspace_id, doc_id, doc, revision, updated_at) VALUES(?,?,?,?,?)",
+                            (wid, did, json.dumps(d), d.get("revision", 1), now_iso),
+                        )
+                        moved += 1
+            else:
+                existing = self.store.request("GET", f"/rest/v1/proofline_documents?workspace_id=eq.{wid}&doc_id=eq.{did}&select=doc_id")
+                if not existing:
+                    self.store.request("POST", "/rest/v1/proofline_documents", {
+                        "workspace_id": wid, "doc_id": did, "doc": d, "revision": d.get("revision", 1), "updated_at": now_iso
+                    })
+                    moved += 1
+        return moved
+
+
 class Store:
     def __init__(self, path=None):
         self.path = str(path or ROOT / "demo.sqlite3")
         self.lock = threading.RLock()
+        self.documents = Documents(self)
         with self.db() as c:
             ensure_schema(c)
 
@@ -89,6 +192,7 @@ class Supabase:
         self.url = os.getenv("SUPABASE_URL", "").rstrip("/")
         self.key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
         self.anon = os.getenv("SUPABASE_ANON_KEY", "")
+        self.documents = Documents(self)
 
     @property
     def configured(self):

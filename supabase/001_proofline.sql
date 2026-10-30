@@ -36,6 +36,35 @@ end;
 $$;
 revoke all on function public.proofline_cas_state(uuid,bigint,jsonb) from public,anon,authenticated;
 grant execute on function public.proofline_cas_state(uuid,bigint,jsonb) to service_role;
+
+-- Round 3 Q1: Per-document storage table & CAS
+create table if not exists public.proofline_documents (
+  workspace_id uuid not null references public.proofline_workspaces(id) on delete cascade,
+  doc_id uuid not null,
+  doc jsonb not null,
+  revision bigint not null default 1,
+  updated_at timestamptz not null default now(),
+  primary key (workspace_id, doc_id)
+);
+create index if not exists proofline_documents_workspace on public.proofline_documents(workspace_id);
+alter table public.proofline_documents enable row level security;
+revoke all on public.proofline_documents from anon;
+grant select on public.proofline_documents to authenticated;
+grant all on public.proofline_documents to service_role;
+drop policy if exists proofline_document_read on public.proofline_documents;
+create policy proofline_document_read on public.proofline_documents for select to authenticated using(exists(select 1 from public.proofline_members m where m.workspace_id=workspace_id and m.user_id=auth.uid()));
+
+create or replace function public.proofline_cas_document(
+  p_workspace uuid, p_doc uuid, p_expected bigint, p_doc_state jsonb
+) returns boolean language plpgsql security definer set search_path=public as $$
+begin
+  update public.proofline_documents
+     set doc = p_doc_state, revision = revision + 1, updated_at = now()
+   where workspace_id = p_workspace and doc_id = p_doc and revision = p_expected;
+  return found;
+end; $$;
+revoke all on function public.proofline_cas_document(uuid,uuid,bigint,jsonb) from public,anon,authenticated;
+grant execute on function public.proofline_cas_document(uuid,uuid,bigint,jsonb) to service_role;
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('proofline-private','proofline-private',false,5242880,array['application/pdf','text/plain','image/png','image/jpeg'])
 on conflict(id) do nothing;

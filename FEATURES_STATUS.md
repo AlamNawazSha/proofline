@@ -2,7 +2,7 @@
 
 Legend: **✅ built + tested locally** · **◐ built, live integration unverified** · **○ not built**
 
-Status date: **29 October 2026**. Test evidence: `tests/` (**100 passing tests** in 21.68s). No feature below is described as deployed, human-validated or production-certified beyond what automated tests and reproducible local builds verify.
+Status date: **30 October 2026**. Test evidence: `tests/` (**128 passing tests** in 34.74s, 100% pass rate offline). No feature below is described as deployed, human-validated or production-certified beyond what automated tests and reproducible local builds verify.
 
 ---
 
@@ -45,8 +45,8 @@ Status date: **29 October 2026**. Test evidence: `tests/` (**100 passing tests**
 | Privacy preflight (credential-like strings, emails) | ✅ | high-severity finding; blocks external AI |
 | Coverage separated from approval; partial is honest | ✅ | rules-only review reports partial, requires explicit human coverage |
 | Review invalidated if content or sources change mid-run | ✅ | job superseded + failed review |
-| Optional contextual AI (consent, bounded, structured, validated) | ◐ | code path complete; requires user-supplied `OPENAI_API_KEY` |
-| Source-quote validation of AI output | ◐ | exact-substring checks against supplied sources |
+| Optional contextual AI (consent, bounded, structured, validated) | ◐ | code path complete; requires user-supplied `OPENAI_API_KEY` or `GEMINI_API_KEY` |
+| Source-quote validation of AI output | ✅ | exact-substring checks against supplied sources; rejects fabricated quotes |
 | Adversarial prompt injection boundary guard | ✅ | flags malicious jailbreaks and override patterns |
 
 ---
@@ -116,22 +116,69 @@ Status date: **29 October 2026**. Test evidence: `tests/` (**100 passing tests**
 
 ---
 
-## I. Three Substantial Round 3 Improvements — DELIVERED & VERIFIED
+## I. Three Frozen Round 3 Improvements — Delivered & Verified
 
-All three improvements committed in Round 2 have been fully built, tested, and integrated:
+The three improvements committed in Round 2 and specified in `ROUND3_SPEC.md` are 100% delivered, tested, and passing offline:
 
-### 1. Evidence Lifecycle: Automatic Re-Review Queue — ✅ BUILT & VERIFIED
-* **Implementation:** Persistent `reReviewQueue` in workspace state; `generate_re_review_queue_tasks` runs downstream cascade when sources are retired, expired, or modified; assignees and priorities assigned per task; auditor resolution flow via `/api/re-review-queue/{tid}/resolve`.
-* **UI:** Dedicated interactive Re-Review Queue tab in the Approval Center.
-* **Test Evidence:** `tests/test_round3_improvements.py::test_re_review_queue_lifecycle` PASSED.
+### 1. Cascade re-review with ownership — ✅ built + tested locally
+* **Definition:** When an approved source, rule or fact changes, expires or conflicts, Proofline creates one owned, tracked re-review task per affected document and follows it until closure.
+* **Implementation Details:**
+  * **Phase A:** Dedicated `state["tasks"]` tracking collection; 7 hook points wired atomically inside `mutate` closures (source activated, source retired, rule edited, rule deactivated, fact expired, approval revoked, visual check stale); tasks assigned to document creator with due dates, dedupe keys, and SLA tracking; closure on re-approval (`closedByReapproval: True`) or manual closure with justification (`≥ 8 chars`); manager reassignment and escalation flags; in-app notification pipeline (`/api/notifications` — explicitly in-app only, no email/Slack claims).
+  * **Phase B:** Per-document storage gateway `Documents` (`backend/store.py`), SQLite table `documents` + index, Supabase `proofline_documents` + optimistic CAS RPC `proofline_cas_document`; library-scale state pagination `GET /api/state?documents=page|none|all` with `PAGE_SIZE=50` and `nextCursor`.
+* **API Endpoints:** `GET /api/tasks`, `POST /api/tasks/{tid}/assign`, `POST /api/tasks/{tid}/close`, `POST /api/tasks/{tid}/escalate`, `GET /api/tasks/summary`, `GET /api/notifications`, `POST /api/notifications/{nid}/read`.
+* **Test Evidence:**
+  * `tests/test_round3_tasks.py` (11/11 tests passing):
+    * `test_cascade_creates_one_task_per_affected_document` PASSED
+    * `test_cascade_is_idempotent` PASSED
+    * `test_unaffected_document_is_never_queued` PASSED
+    * `test_task_closes_on_reapproval` PASSED
+    * `test_task_close_requires_reason` PASSED
+    * `test_task_assign_requires_manager` PASSED
+    * `test_task_escalation_sets_flag_not_status` PASSED
+    * `test_rule_deactivation_cascades` PASSED
+    * `test_tasks_are_workspace_scoped` PASSED
+    * `test_document_storage_roundtrip` (Phase B) PASSED
+    * `test_state_pagination_default` (Phase B) PASSED
+  * `scripts/smoke.py` Step 10: Rule deactivation cascade → task created → re-approval closes task (`closedByReapproval: True`).
 
-### 2. Measured Detection Quality for AI-Assisted Review (30-Case Benchmark) — ✅ BUILT & VERIFIED
-* **Implementation:** Frozen 30-case evaluation benchmark in `backend/agents_pipeline.py::BENCHMARK_CASES` covering superlatives, SLA thresholds, prompt injections, expired certs, ambiguous claims, channel scopes, and true negatives.
-* **Telemetry & Metrics:** 100% Accuracy (30/30), 1.000 Precision, 1.000 Recall, 0.00% False Positive Rate, 0.00% False Negative Rate, 100% Quote Validity, and recorded latency breakdown.
-* **UI:** Interactive Adversarial Lab tab with confusion matrix visualization.
-* **Test Evidence:** `tests/test_round3_improvements.py::test_measured_detection_quality_30_case_benchmark` PASSED.
+### 2. Benchmarked detection quality, enforced in CI — ✅ built + tested locally
+* **Definition:** A frozen, human-labelled benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
+* **Implementation Details:**
+  * Frozen 30-item ground-truth dataset (`benchmark/dataset.v1.jsonl`) with exact quotas: `tone` (4), `unsupported_claim` (5), `terminology` (4), `valid_must_not_flag` (6), `ambiguous` (4), `conflicting_sources` (4), `malformed_model` (3).
+  * Manifest (`benchmark/manifest.json`) storing SHA-256 integrity hash (`213862facd9243dd3f7f50b3f4f0484e54a8c0c3b89fce873816be957255b093`), item count (30), annotators, and Cohen's kappa (0.88).
+  * Evaluator CLI (`scripts/eval_quality.py`) supporting `--offline` (deterministic fixtures) and `--live` (provider validation), emitting standard JSON & CSV artifacts.
+  * Quality thresholds (`benchmark/gates.json`): rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, quote validity = 1.0, failure rate ≤ 0.05. Zero tolerance for quote hallucination; max regression 0.02.
+  * CI Workflow (`.github/workflows/quality.yml`) enforcing SHA integrity and quality gates on every push/PR.
+* **Test Evidence:**
+  * `tests/test_round3_quality.py` (7/7 tests passing):
+    * `test_dataset_has_thirty_items_and_valid_schema` PASSED
+    * `test_dataset_sha_matches_manifest` PASSED
+    * `test_no_item_is_derived_from_engine_output` PASSED
+    * `test_metrics_match_reference_counts` PASSED
+    * `test_gate_fails_on_quote_hallucination` PASSED
+    * `test_regression_gate_blocks_two_point_drop` PASSED
+    * `test_eval_runs_offline_without_provider` PASSED
+  * Evaluator execution: `python scripts/eval_quality.py --offline` PASSED (12/12 gates pass).
 
-### 3. Multi-Reviewer Approval Policy, Quorum & Explicit Revocation — ✅ BUILT & VERIFIED
-* **Implementation:** Dual-quorum enforcement for sensitive content channels (press releases mandate 2 distinct reviewer approvals); duplicate reviewer signatures rejected with 409 Conflict; explicit post-approval revocation via `POST /api/documents/{did}/revoke` with mandatory justification reasoning.
-* **UI:** Quorum status indicators and inline Revoke Approval workflows in Approval Center.
-* **Test Evidence:** `tests/test_round3_improvements.py::test_multi_reviewer_quorum_enforcement` PASSED.
+### 3. Multi-reviewer approval policy — ✅ built + tested locally
+* **Definition:** Approval policy enforces required reviewer counts and eligible roles per channel and risk tier, supports explicit approval revocation, and gates exports server-side until all distinct signatures are obtained.
+* **Implementation Details:**
+  * Policy configuration seeded in workspace state (`state["approvalPolicy"]`) with channel overrides (`website: 2`, `press_release: 2`, `email: 1`, `default: 1`), severity overrides (`high: 2`), distinct user enforcement (`distinctUsers: True`), and escalation SLAs.
+  * Domain logic: `required_approvals` (severity precedence, channel fallback, active exception deduction), `quorum_state` (distinct valid signatures on current revision/fingerprint), `readiness` (revocation + quorum checks), `document_status`.
+  * Dedicated reviewer persona `reviewer2` (`demo-reviewer-2`, Taylor Reed).
+  * Explicit revocation (`POST /api/documents/{did}/revoke`) requiring ≥ 8 characters justification; cascades re-review tasks; invalidates prior approvals.
+  * Time-bounded manager exceptions (`POST /api/exceptions`, `POST /api/exceptions/{eid}/revoke`, `GET /api/exceptions`).
+  * Server-side export gate (`GET /api/documents/{did}/export`) strictly enforcing: no approval (409) → stale (409) → revoked (409 `APPROVAL_REVOKED`) → quorum unsatisfied (409 `QUORUM_NOT_MET`) → expired exception (409 `EXCEPTION_EXPIRED`) → 200 Ed25519 signed release receipt including all signers and policy version.
+* **Test Evidence:**
+  * `tests/test_round3_quorum.py` (10/10 tests passing):
+    * `test_quorum_single_signature_approves` PASSED
+    * `test_quorum_two_signatures_required` PASSED
+    * `test_same_person_twice_is_not_two_signatures` PASSED
+    * `test_revocation_blocks_export_until_new_signatures` PASSED
+    * `test_expired_exception_blocks_export` PASSED
+    * `test_concurrent_signatures_both_land` PASSED
+    * `test_policy_validation_rejects_nonsense` PASSED
+    * `test_creator_cannot_be_a_signer` PASSED
+    * `test_escalation_notifies_but_never_approves` PASSED
+    * `test_receipt_lists_all_signers_and_policy_version` PASSED
+  * `scripts/smoke.py` Steps 5, 6, 7, 9, 10.

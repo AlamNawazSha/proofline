@@ -1,6 +1,6 @@
 # Proofline 2.0: Autonomous Evidence Intelligence, AI Compliance, and Verifiable Approval Platform
 
-[![Tests](https://img.shields.io/badge/pytest-100%20passed-emerald)](file:///tests/)
+[![Tests](https://img.shields.io/badge/pytest-128%20passed-emerald)](file:///tests/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.5.28%20(React%2019)-blue)](file:///frontend/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)](file:///backend/)
 [![Cryptography](https://img.shields.io/badge/Ed25519-RFC%208032%20Signed-cyan)](file:///backend/crypto_passport.py)
@@ -30,23 +30,25 @@ Modern enterprises face an acute governance crisis: generative AI models produce
 
 ## 2. Round 3 Flagship Improvements Delivered
 
-Measured directly against the three improvements committed at Round 2 (`docs/ROUND2_SUBMISSION.md` / `docs/ROUND3.md`):
+Measured directly against the three improvements committed at Round 2 (`docs/ROUND2_SUBMISSION.md` / `ROUND3_SPEC.md`):
 
-1. **Evidence Lifecycle: Automatic Re-Review Queue:**
-   - Detects when governing evidence, sources, or rules change, expire, or conflict.
-   - Automatically computes downstream cascade impacts (`analyze_change_impact`) across all documents and creates persistent reviewer tasks (`TASK-xxxxxxxx`).
-   - Integrated into source retirement (`/api/sources/{sid}/retire`) with auditor resolution justification workflows (`/api/re-review-queue/{tid}/resolve`).
-   - UI tab in Approval Center with priority indicators and resolution drawers. Verified in `tests/test_round3_improvements.py::test_re_review_queue_lifecycle`.
+1. **Cascade re-review with ownership (Q1):**
+   - **Definition:** When an approved source, rule or fact changes, expires or conflicts, Proofline creates one owned, tracked re-review task per affected document and follows it until closure.
+   - **Phase A (Task Pipeline):** 7 atomic hook points inside `mutate` closures (source activated/retired, rule edited/deactivated, fact expired, approval revoked, visual stale). Creates deduplicated tasks assigned to document creator with due dates and SLA tracking. Closes automatically on re-approval (`closedByReapproval: True`) or manual justification (`≥ 8 chars`). In-app notification pipeline (`/api/notifications`; explicitly in-app only, no email/Slack claims).
+   - **Phase B (Per-Document Storage & Scalability):** Document storage gateway `Documents` (`backend/store.py`) with optimistic CAS locking and library-scale state pagination (`GET /api/state?documents=page|none|all` with 50 per page + nextCursor).
+   - **Test Evidence:** All 11 acceptance tests passing in `tests/test_round3_tasks.py` and verified in `scripts/smoke.py` Step 10.
 
-2. **Measured Detection Quality for AI-Assisted Review (30-Case Benchmark):**
-   - Frozen 30-case evaluation benchmark in `backend/agents_pipeline.py::BENCHMARK_CASES` across superlatives, numerical SLAs, prompt injections, expired certificates, ambiguous claims, channel scopes, and true negatives.
-   - Live evaluation runner reports **100% Accuracy (30/30)**, **1.000 Precision**, **1.000 Recall**, **0.00% FPR**, **0.00% FNR**, **100% Quote Validity**, and per-case sub-millisecond latency.
-   - Interactive Adversarial Lab tab with confusion matrix visualization. Verified in `tests/test_round3_improvements.py::test_measured_detection_quality_30_case_benchmark`.
+2. **Benchmarked detection quality, enforced in CI (Q2):**
+   - **Definition:** A frozen, human-labelled benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
+   - **Frozen Dataset & Manifest:** Exactly 30 human-labelled items in `benchmark/dataset.v1.jsonl` with category quotas (tone 4, unsupported claims 5, terminology 4, valid true-negatives 6, ambiguous 4, conflicting 4, malformed 3). Manifest with SHA-256 integrity hash (`213862facd9243dd3f7f50b3f4f0484e54a8c0c3b89fce873816be957255b093`) and Cohen's kappa (0.88).
+   - **Evaluator & CI Gate:** Evaluator CLI (`scripts/eval_quality.py --offline|--live`) checks 12 quality gates (rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, zero quote hallucination tolerance). Regression gate (max 0.02 drop) and SHA verification enforced in GitHub Actions (`.github/workflows/quality.yml`).
+   - **Test Evidence:** All 7 acceptance tests passing in `tests/test_round3_quality.py` and `scripts/eval_quality.py --offline` passing all 12 gates.
 
-3. **Multi-Reviewer Approval Policy, Quorum & Explicit Revocation:**
-   - Dual-quorum enforcement for sensitive content channels (press releases mandate 2 distinct reviewer approvals).
-   - Author self-approval (`403 Forbidden`) and duplicate approvals by the same reviewer (`409 Conflict`) are blocked.
-   - Explicit approval revocation (`POST /api/documents/{did}/revoke`) with mandatory justification reasoning, instantly blocking release export. Verified in `tests/test_round3_improvements.py::test_multi_reviewer_quorum_enforcement`.
+3. **Multi-reviewer approval policy (Q3):**
+   - **Definition:** Approval policy enforces required reviewer counts and eligible roles per channel and risk tier, supports explicit approval revocation, and gates exports server-side until all distinct signatures are obtained.
+   - **Quorum & Separation of Duties:** Seeded policy (`state['approvalPolicy']`) with channel overrides (`website: 2`, `press_release: 2`, `email: 1`) and severity overrides (`high: 2`). Author self-approval prohibited (403), same reviewer twice rejected (403/409), distinct reviewer signatures tracked.
+   - **Explicit Revocation & Manager Exceptions:** `POST /api/documents/{did}/revoke` requires ≥ 8 chars justification and cascades tasks. Time-bounded manager exceptions (`/api/exceptions`) deduct needed signatures. Strict server-side export gate produces Ed25519 signed receipts listing all signers and policy version.
+   - **Test Evidence:** All 10 acceptance tests passing in `tests/test_round3_quorum.py` and verified in `scripts/smoke.py` Steps 5, 6, 7, 9, 10.
 
 ---
 
@@ -101,11 +103,13 @@ Measured directly against the three improvements committed at Round 2 (`docs/ROU
 ## 4. Test Results & Build Status
 
 - **Pytest Suite:** `python -m pytest tests/ -v`
-  - **100 passed in 21.68s** (100% clean test execution across `test_core.py`, `test_upgrades.py`, `test_proofline2.py`, and `test_round3_improvements.py`).
+  - **128 passed in 34.74s** (100% clean test execution across `test_core.py`, `test_upgrades.py`, `test_round3_improvements.py`, `test_round3_quality.py`, `test_round3_quorum.py`, and `test_round3_tasks.py`).
+- **Benchmarked Quality Evaluator:** `python scripts/eval_quality.py --offline`
+  - **12/12 gates passed** across deterministic rules and AI detection layers.
 - **Next.js Production Build:** `npm --prefix frontend run build`
-  - **Compiled clean in 6.8s** with 0 errors across all 5 static & dynamic app routes.
+  - **Compiled clean in 6.8s** with 0 errors across all static & dynamic app routes.
 - **End-to-End Governance Smoke Test:** `python scripts/smoke.py`
-  - **All 9 steps verified**: Demo Init -> Review -> Suggestion -> Submit -> Author Block (403) -> Reviewer Approve (200) -> Export (200) -> Edit (200) -> Export Blocked (409).
+  - **All 10 steps verified**: Demo Init -> Review -> Suggestion -> Submit -> Author Block (403) -> Reviewer 1 Approve (200) -> Reviewer 2 Approve (Quorum) -> Export (200) -> Edit (200) -> Export Blocked (409) -> Cascade Trigger -> Re-review Tasks -> Quorum Re-Approval -> Task Closes (closedByReapproval: True).
 
 ---
 
@@ -135,10 +139,13 @@ Open `http://localhost:3000` in your browser.
 
 ### Run Automated Tests
 ```bash
-# Run all 100 unit, cryptographic, and pipeline tests
-python -m pytest tests/ -v
+# Run all 128 unit, cryptographic, quorum, and cascade tests
+python -m pytest -q
 
-# Run the 9-step governance smoke test
+# Run benchmarked detection quality evaluation
+python scripts/eval_quality.py --offline
+
+# Run the 10-step governance smoke test
 python scripts/smoke.py http://127.0.0.1:8000
 ```
 
@@ -147,14 +154,21 @@ python scripts/smoke.py http://127.0.0.1:8000
 ## 6. Directory Structure
 
 ```
+├── .github/workflows/
+│   └── quality.yml             # CI quality evaluation workflow (SHA check + gates)
 ├── backend/
 │   ├── crypto_passport.py      # Ed25519 signing, verification & single-char tamper detection
 │   ├── ingestion.py            # Multi-format ingestion (PDF, DOCX, CSV, safe URL crawl)
-│   ├── agents_pipeline.py      # 7-Agent verification pipeline, 30-case benchmark & re-review queue
-│   ├── engine.py               # Deterministic rule engine, Evidence Graph & Impact Cascade
-│   ├── main.py                 # FastAPI REST API endpoints & route handlers
-│   ├── store.py                # Isolated SQLite session store & persistence layer
+│   ├── agents_pipeline.py      # Multi-agent verification pipeline & impact cascade
+│   ├── engine.py               # Pure domain logic: rules, quorum, cascade tasks, fingerprints
+│   ├── main.py                 # FastAPI REST API endpoints, session handling & rate limiting
+│   ├── store.py                # Documents gateway, SQLite WAL & Supabase CAS store
 │   └── requirements.txt        # Backend dependencies
+├── benchmark/
+│   ├── dataset.v1.jsonl        # Frozen 30-item human-labelled ground-truth benchmark
+│   ├── manifest.json           # SHA-256 integrity hash & Cohen's kappa
+│   ├── gates.json              # Quality gate thresholds (precision, recall, FPR, quote validity)
+│   └── model_fixtures.json     # Offline deterministic AI evaluation fixtures
 ├── frontend/
 │   ├── app/
 │   │   ├── components/
@@ -170,8 +184,11 @@ python scripts/smoke.py http://127.0.0.1:8000
 │   │   ├── globals.css                   # Enterprise navy theme, badges & layout styles
 │   │   └── page.tsx                      # Primary enterprise navigation shell & state
 ├── tests/
-│   ├── test_round3_improvements.py # Tests for the three flagship Round 3 improvements
-│   ├── test_proofline2.py          # Security, cryptographic passport, graph & agents tests
+│   ├── conftest.py                 # Offline guard (clears provider API keys)
+│   ├── test_round3_tasks.py        # Q1 Cascade re-review acceptance tests (11 tests)
+│   ├── test_round3_quality.py      # Q2 Benchmarked detection quality acceptance tests (7 tests)
+│   ├── test_round3_quorum.py       # Q3 Multi-reviewer approval policy acceptance tests (10 tests)
+│   ├── test_round3_improvements.py # Round 3 improvements integration tests
 │   ├── test_upgrades.py            # Invariants, boundary checks, bearer tokens & CAS mutations
 │   └── test_core.py                # Core journeys, separation of duties & WCAG contrast
 ├── docs/
@@ -179,7 +196,10 @@ python scripts/smoke.py http://127.0.0.1:8000
 │   ├── Proofline_2.0_Final_Product_Submission.pdf # Official generated product PDF
 │   └── ARCHITECTURE.md             # Detailed technical architecture specification
 ├── scripts/
-│   ├── smoke.py                    # 9-step end-to-end governance smoke test
+│   ├── smoke.py                    # 10-step end-to-end governance smoke test
+│   ├── eval_quality.py             # Evaluation benchmark runner (offline & live)
+│   ├── build_dataset.py            # Dataset compiler & schema validator
+│   ├── build_fixtures.py           # Offline model fixture generator
 │   └── generate_product_pdf.py     # ReportLab script to build the official submission PDF
 ├── pyproject.toml                  # Pytest configuration with pythonpath
 └── README.md                       # This documentation

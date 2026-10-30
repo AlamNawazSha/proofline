@@ -138,7 +138,17 @@ def run_smoke(base_url: str):
         f"{base_url}/api/documents/{clean_doc['id']}/decision",
         json={"data": {"outcome": "approved", "expectedRevision": clean_doc["revision"], "manualCoverage": True, "reason": "Verified approved source pack v1"}}
     )
-    check(6, "Reviewer Approval Success", r_app.status_code == 200, f"Expected 200, got {r_app.status_code}")
+    check(6, "Reviewer 1 Approval Success", r_app.status_code == 200, f"Expected 200, got {r_app.status_code}")
+
+    # High-impact channels (e.g. website) require 2 distinct reviewer approvals under Q3 Quorum policy
+    r_switch2 = session.post(f"{base_url}/api/persona", json={"data": {"role": "reviewer2"}})
+    check(6, "Switch to Reviewer 2 Persona", r_switch2.status_code == 200, f"Expected 200, got {r_switch2.status_code}")
+
+    r_app2 = session.post(
+        f"{base_url}/api/documents/{clean_doc['id']}/decision",
+        json={"data": {"outcome": "approved", "expectedRevision": clean_doc["revision"], "manualCoverage": True, "reason": "Second reviewer verification."}}
+    )
+    check(6, "Reviewer 2 Approval (Quorum Satisfied)", r_app2.status_code == 200, f"Expected 200, got {r_app2.status_code}")
 
     # 7. Export report MUST return 200 OK
     r_exp = session.get(f"{base_url}/api/documents/{clean_doc['id']}/export")
@@ -159,6 +169,60 @@ def run_smoke(base_url: str):
     # 9. Export MUST now return 409 Conflict
     r_exp_blocked = session.get(f"{base_url}/api/documents/{clean_doc['id']}/export")
     check(9, "Export Blocked After Content Change", r_exp_blocked.status_code == 409, f"Expected 409 Conflict, got {r_exp_blocked.status_code}")
+
+    # 10. Q1 Cascade Re-Review: Trigger rule/source update -> tasks appear -> close via re-approval
+    r_mgr = session.post(f"{base_url}/api/persona", json={"data": {"role": "manager"}})
+    check(10, "Switch to Manager Persona", r_mgr.status_code == 200, f"Expected 200, got {r_mgr.status_code}")
+
+    fresh_st = session.get(f"{base_url}/api/state").json()
+    active_rule = next((r for r in fresh_st.get("rules", []) if r.get("active")), None)
+    if active_rule:
+        r_deact = session.post(f"{base_url}/api/rules/{active_rule['id']}/deactivate")
+        check(10, "Deactivate Rule to Trigger Cascade", r_deact.status_code == 200, f"Expected 200, got {r_deact.status_code}")
+    else:
+        r_src = session.post(f"{base_url}/api/sources", json={"data": {"title": "Smoke Guideline v2", "body": "Updated smoke guidelines."}})
+        r_deact = session.post(f"{base_url}/api/sources/{r_src.json()['id']}/activate")
+        check(10, "Activate Source to Trigger Cascade", r_deact.status_code == 200, f"Expected 200, got {r_deact.status_code}")
+
+    r_tasks = session.get(f"{base_url}/api/tasks?status=open")
+    check(10, "Re-Review Tasks Appear in Queue", r_tasks.status_code == 200 and len(r_tasks.json().get("tasks", [])) > 0, "Expected open re-review tasks")
+    open_task = next((t for t in r_tasks.json().get("tasks", []) if t.get("documentId") == clean_doc["id"]), None)
+
+    # Creator re-submits document for re-review
+    session.post(f"{base_url}/api/persona", json={"data": {"role": "creator"}})
+    session.post(f"{base_url}/api/documents/{clean_doc['id']}/review", json={"data": {"useAI": False}})
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        fresh_st = session.get(f"{base_url}/api/state").json()
+        doc_rereviewed = next(d for d in fresh_st["documents"] if d["id"] == clean_doc["id"])
+        if doc_rereviewed["review"]["status"] not in ["queued", "reviewing"]:
+            break
+        time.sleep(0.1)
+
+    session.post(f"{base_url}/api/documents/{clean_doc['id']}/submit")
+
+    # Reviewer 1 approves the re-reviewed revision
+    session.post(f"{base_url}/api/persona", json={"data": {"role": "reviewer"}})
+    fresh_st = session.get(f"{base_url}/api/state").json()
+    cur_doc = next(d for d in fresh_st["documents"] if d["id"] == clean_doc["id"])
+    r_reapp = session.post(
+        f"{base_url}/api/documents/{clean_doc['id']}/decision",
+        json={"data": {"outcome": "approved", "expectedRevision": cur_doc["revision"], "manualCoverage": True, "reason": "Re-approved post-cascade."}}
+    )
+    check(10, "Re-Approval 1 Recorded", r_reapp.status_code == 200, f"Expected 200, got {r_reapp.status_code}")
+
+    # Reviewer 2 approves to complete quorum
+    session.post(f"{base_url}/api/persona", json={"data": {"role": "reviewer2"}})
+    r_reapp2 = session.post(
+        f"{base_url}/api/documents/{clean_doc['id']}/decision",
+        json={"data": {"outcome": "approved", "expectedRevision": cur_doc["revision"], "manualCoverage": True, "reason": "Second reviewer re-approval."}}
+    )
+    check(10, "Re-Approval 2 Recorded (Quorum Completed)", r_reapp2.status_code == 200, f"Expected 200, got {r_reapp2.status_code}")
+
+    # Verify task closes via re-approval
+    r_tasks_after = session.get(f"{base_url}/api/tasks?documentId={clean_doc['id']}")
+    closed_tasks = [t for t in r_tasks_after.json().get("tasks", []) if t.get("status") == "closed"]
+    check(10, "Task Closes on Re-Approval", any(t.get("closedByReapproval") is True for t in closed_tasks), "Expected task closed with closedByReapproval=True")
 
     print("\n[SUCCESS] Full governance journey verified successfully against target!")
 

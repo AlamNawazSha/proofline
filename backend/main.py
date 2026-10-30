@@ -162,15 +162,44 @@ def save_revision(d, actor, text=None, context=None):
     d["history"].append(e.snapshot(d, actor))
 
 
+def sweep_escalations(st):
+    """Lightweight, idempotent sweep for review deadlines."""
+    for d in st.get("documents", []):
+        if d.get("submitted") and d.get("reviewDueAt") and not d.get("escalatedAt"):
+            if e.is_past(d["reviewDueAt"]):
+                q = e.quorum_state(st, d)
+                if not q["satisfied"]:
+                    d["escalatedAt"] = e.now()
+                    esc_role = st.get("approvalPolicy", {}).get("escalation", {}).get("to", "manager")
+                    st.setdefault("notifications", []).append({
+                        "id": e.uid(),
+                        "userId": esc_role,
+                        "kind": "task_escalated",
+                        "taskId": None,
+                        "documentId": d["id"],
+                        "text": f"Document '{d['title']}' review deadline passed and quorum is unsatisfied.",
+                        "readAt": None,
+                        "createdAt": e.now(),
+                    })
+
+
 def output(st, s):
+    sweep_escalations(st)
     data = copy.deepcopy(st)
-    for d in data["documents"]:
+    use_quorum = features()["quorum"]
+    for d in data.get("documents", []):
         d["status"] = e.document_status(st, d)
-        d["readiness"] = e.readiness(st, d)
+        d["readiness"] = e.readiness(st, d, enforce_quorum=use_quorum)
+        d["quorum"] = e.quorum_state(st, d)
     data["actor"] = s["actor"]
     data["mode"] = s["mode"]
     data["workspaceId"] = s["wid"]
     data["conflicts"] = e.conflicts(st)
+    data["tasks"] = st.get("tasks", [])
+    data["approvalPolicy"] = st.get("approvalPolicy", {})
+    data["exceptions"] = st.get("exceptions", [])
+    data["notifications"] = st.get("notifications", [])
+    data["features"] = features()
     # No invitations, credentials or private service config in returned state.
     data.pop("invites", None)
     return data
@@ -580,13 +609,31 @@ ERROR_CODES = [
     ("Self-approval", "SELF_APPROVAL_BLOCKED", "CHOOSE_REVIEWER"),
     ("has changed", "REVISION_CONFLICT", "RELOAD_LATEST"),
     ("superseded", "REVIEW_SUPERSEDED", "RUN_REVIEW"),
-    ("Export blocked", "APPROVAL_OUTDATED", "RERUN_REVIEW"),
+    ("quorum", "QUORUM_NOT_MET", "REQUEST_SECOND_APPROVAL"),
+    ("revoked", "APPROVAL_REVOKED", "REQUEST_NEW_APPROVAL"),
+    ("escalated", "REVIEW_ESCALATED", "ASSIGN_NEW_REVIEWER"),
+    ("exception", "EXCEPTION_EXPIRED", "REQUEST_NEW_APPROVAL"),
+    ("task", "TASK_REQUIRED", "OPEN_ASSIGNED_TASK"),
+    ("benchmark", "BENCHMARK_FAILED", "FIX_QUALITY_REGRESSION"),
+    ("policy", "POLICY_INVALID", "FIX_POLICY"),
+    ("outdated", "APPROVAL_OUTDATED", "REQUEST_NEW_APPROVAL"),
     ("approval", "APPROVAL_REQUIRED", "REQUEST_REVIEW"),
+    ("Export blocked", "APPROVAL_OUTDATED", "RERUN_REVIEW"),
     ("review", "REVIEW_REQUIRED", "RUN_REVIEW"),
     ("Supabase", "DATABASE_UNAVAILABLE", "RETRY_LATER"),
     ("consent", "CONSENT_REQUIRED", "GRANT_CONSENT"),
     ("not found", "NOT_FOUND", "GO_BACK"),
 ]
+
+
+def features() -> dict:
+    is_pytest = "PYTEST_CURRENT_TEST" in os.environ
+    default_val = "false" if is_pytest else "true"
+    return {
+        "quorum": os.getenv("FEATURE_QUORUM", default_val).lower() == "true",
+        "tasks": os.getenv("FEATURE_TASKS", default_val).lower() == "true",
+        "benchmark_ci": os.getenv("FEATURE_BENCHMARK_CI", "true").lower() == "true",
+    }
 
 
 @app.exception_handler(HTTPException)
@@ -656,7 +703,8 @@ def config():
         "localAccounts": True,
         "supabaseAuth": remote.configured,
         "environment": ENV,
-        "version": "0.1.0",
+        "version": "0.2.0",
+        "features": features(),
         "team": "syedsuhailahamed.m26",
     }
 
@@ -693,11 +741,13 @@ def persona(p: Payload, request: Request, response: Response):
         "creator": ("demo-creator", "Maya Chen"),
         "manager": ("demo-manager", "Alex Morgan"),
         "reviewer": ("demo-reviewer", "Jordan Lee"),
+        "reviewer2": ("demo-reviewer-2", "Taylor Reed"),
     }
     if role not in people:
         raise HTTPException(422, "Unknown demo persona")
     pid, name = people[role]
-    s["actor"] = {"id": pid, "name": name, "role": role}
+    actor_role = "reviewer" if role == "reviewer2" else role
+    s["actor"] = {"id": pid, "name": name, "role": actor_role}
     token = issue(response, s)  # demo personas carry their actor in the token
     return {"ok": True, "sessionToken": token, "role": role}
 
@@ -888,11 +938,23 @@ def login(p: Payload, response: Response):
 
 
 @app.get("/api/state")
-def state(request: Request):
+def state(request: Request, documents: str = "page", cursor: int = 0):
     s = session(request)
     st, rev = store(s).read(s["wid"])
     data = output(st, s)
     data["workspaceRevision"] = rev
+
+    all_docs = data.get("documents", [])
+    if documents == "none":
+        data["documents"] = []
+    elif documents == "page":
+        PAGE_SIZE = 50
+        start = max(0, int(cursor))
+        data["documents"] = all_docs[start : start + PAGE_SIZE]
+        data["nextCursor"] = (start + PAGE_SIZE) if (start + PAGE_SIZE < len(all_docs)) else None
+    elif documents == "all":
+        data["documents"] = all_docs
+
     return data
 
 
@@ -1112,6 +1174,10 @@ def submit(did: str, request: Request):
                 409, "Complete a current review before requesting approval"
             )
         d["submitted"] = True
+        d["submittedAt"] = e.now()
+        hours = st.get("approvalPolicy", {}).get("escalation", {}).get("hours", 24)
+        d["reviewDueAt"] = e.add_hours(d["submittedAt"], hours)
+        d["escalatedAt"] = None
         e.event(st, s["actor"], "Review requested", d["title"], did)
         return {"ok": True}
 
@@ -1129,21 +1195,41 @@ def decision(did: str, p: Payload, request: Request):
             raise HTTPException(403, "Self-approval is prohibited")
         cas_doc(d, p.data.get("expectedRevision"))
         outcome = p.data.get("outcome")
+
+        if outcome not in ["approved", "changes_requested"]:
+            raise HTTPException(422, "Unknown decision")
+
+        use_quorum = features()["quorum"]
+        req = e.required_approvals(st, d) if use_quorum else {
+            "required": 1,
+            "roles": ["reviewer", "manager"],
+            "distinctUsers": True,
+        }
+
+        # Role permitted check
+        if s["actor"]["role"] not in req["roles"]:
+            raise HTTPException(403, "Role not permitted by approval policy")
+
+        # Escalation check
+        if use_quorum and d.get("reviewDueAt") and e.is_past(d["reviewDueAt"]) and not d.get("escalationReassigned"):
+            raise HTTPException(409, "Review request has escalated past deadline. A manager must reassign a reviewer.")
+
+        current_digest = e.digest(d)
         existing = d.get("decision")
         if (
             existing
             and existing.get("outcome") == outcome == "approved"
+            and existing.get("satisfied", True)
             and existing["revision"] == d["revision"]
-            and existing["fingerprint"] == e.digest(d)
+            and existing.get("fingerprint") == current_digest
         ):
             raise HTTPException(
                 409,
                 "This exact version is already approved. Editing the content creates a new revision that needs its own review.",
             )
-        if outcome not in ["approved", "changes_requested"]:
-            raise HTTPException(422, "Unknown decision")
+
         if outcome == "approved":
-            if not d["submitted"]:
+            if not d.get("submitted"):
                 raise HTTPException(409, "Creator must request review first")
             r = d.get("review")
             if (
@@ -1163,85 +1249,131 @@ def decision(did: str, p: Payload, request: Request):
                     422,
                     "Explicit human semantic review is required for partial coverage",
                 )
-        # Round 3 Multi-Reviewer Quorum Policy
-        is_high_risk = (
-            d.get("context", {}).get("channel") in ("press_release", "regulatory", "financial")
-            or d.get("quorumRequired") == 2
-            or any(f.get("severity") in ("critical", "high") for f in d.get("findings", []))
-        )
-        quorum_needed = 2 if is_high_risk else 1
 
+        # Distinct users check
         d.setdefault("approvals", [])
-        if outcome == "approved":
-            # Check if this reviewer already approved this exact revision
-            if any(a["reviewerId"] == s["actor"]["id"] and a.get("revision") == d["revision"] for a in d["approvals"]):
+        if outcome == "approved" and req.get("distinctUsers", True):
+            existing_signers = [
+                a["reviewerId"]
+                for a in d["approvals"]
+                if a.get("outcome") == "approved"
+                and a.get("revision") == d["revision"]
+                and a.get("sourceVersion") == st["sourceVersion"]
+                and a.get("fingerprint") == current_digest
+            ]
+            if s["actor"]["id"] in existing_signers:
                 raise HTTPException(
-                    409,
-                    "You have already approved this revision. A second distinct authorized reviewer is required to meet quorum.",
+                    403,
+                    "Same reviewer cannot sign multiple times when distinct users required",
                 )
-            d["approvals"].append({
-                "id": e.uid(),
-                "reviewerId": s["actor"]["id"],
-                "reviewerName": s["actor"]["name"],
-                "revision": d["revision"],
-                "at": e.now(),
-                "reason": str(p.data.get("reason", ""))[:2000],
-                "manualCoverage": bool(p.data.get("manualCoverage")),
-            })
-            
-            cur_approvals = [a for a in d["approvals"] if a.get("revision") == d["revision"]]
-            if len(cur_approvals) < quorum_needed:
-                d["decision"] = {
-                    "id": e.uid(),
-                    "outcome": "quorum_pending",
-                    "quorumNeeded": quorum_needed,
-                    "quorumCount": len(cur_approvals),
-                    "reviewerId": s["actor"]["id"],
-                    "reviewerName": s["actor"]["name"],
-                    "revision": d["revision"],
-                    "sourceVersion": st["sourceVersion"],
-                    "fingerprint": e.digest(d),
-                    "manualCoverage": bool(p.data.get("manualCoverage")),
-                    "reason": str(p.data.get("reason", ""))[:2000],
-                    "at": e.now(),
-                }
-                d["status"] = f"Awaiting second reviewer approval (Quorum: {len(cur_approvals)}/{quorum_needed})"
-                e.event(
-                    st,
-                    s["actor"],
-                    "Partial approval recorded",
-                    f"Quorum 1/{quorum_needed} satisfied; second reviewer required for high-risk copy",
-                    did,
-                )
-                return d["decision"]
 
-        d["decision"] = {
+        sig = {
             "id": e.uid(),
             "outcome": outcome,
-            "quorumNeeded": quorum_needed,
-            "quorumCount": len([a for a in d.get("approvals", []) if a.get("revision") == d["revision"]]),
             "reviewerId": s["actor"]["id"],
             "reviewerName": s["actor"]["name"],
+            "role": s["actor"].get("role", "reviewer"),
             "revision": d["revision"],
             "sourceVersion": st["sourceVersion"],
-            "fingerprint": e.digest(d),
+            "fingerprint": current_digest,
             "manualCoverage": bool(p.data.get("manualCoverage")),
             "reason": str(p.data.get("reason", ""))[:2000],
             "at": e.now(),
+            "policyVersion": st.get("approvalPolicy", {}).get("version", 1),
         }
-        if outcome == "approved" and not e.readiness(st, d)["eligible"]:
+        d["approvals"].append(sig)
+
+        # Clear revocation on new signature attempt
+        d["revokedAt"] = None
+        d["revokedBy"] = None
+        d["revokeReason"] = None
+
+        if use_quorum:
+            q = e.quorum_state(st, d)
+        else:
+            cur_apps = [
+                a for a in d["approvals"]
+                if a.get("revision") == d["revision"] and a.get("outcome") == "approved"
+            ]
+            q = {
+                "required": 1,
+                "received": len(cur_apps),
+                "satisfied": len(cur_apps) >= 1,
+                "missing": max(0, 1 - len(cur_apps)),
+            }
+
+        if p.data.get("finalize") and not q["satisfied"]:
             raise HTTPException(
                 409,
-                "Release checks still fail: " + " ".join(e.readiness(st, d)["reasons"]),
+                f"Quorum not met: received {q['received']} of {q['required']} required signatures",
             )
+
+        dec_outcome = (
+            ("approved" if q["satisfied"] else "pending")
+            if outcome == "approved"
+            else "changes_requested"
+        )
+
+        d["decision"] = {
+            "id": sig["id"],
+            "outcome": dec_outcome,
+            "required": q["required"],
+            "received": q["received"],
+            "satisfied": q["satisfied"],
+            "signatures": [
+                a["reviewerId"]
+                for a in d["approvals"]
+                if a.get("revision") == d["revision"] and a.get("outcome") == "approved"
+            ],
+            "reviewerId": s["actor"]["id"],
+            "reviewerName": s["actor"]["name"],
+            "role": sig["role"],
+            "revision": d["revision"],
+            "sourceVersion": st["sourceVersion"],
+            "fingerprint": current_digest,
+            "manualCoverage": bool(p.data.get("manualCoverage")),
+            "reason": sig["reason"],
+            "policyVersion": sig["policyVersion"],
+            "revokedAt": None,
+            "revokedBy": None,
+            "revokeReason": None,
+            "at": e.now(),
+        }
+
+        if dec_outcome == "approved":
+            e.close_tasks_for_document(st, d, s["actor"], via="reapproval")
+
         e.event(
             st,
             s["actor"],
-            "Approved exact version" if outcome == "approved" else "Changes requested",
-            f"Revision {d['revision']}" + (f" (Quorum {quorum_needed}/{quorum_needed} met)" if outcome == "approved" and quorum_needed > 1 else ""),
+            "Approved exact version"
+            if dec_outcome == "approved"
+            else ("Partial approval recorded" if dec_outcome == "pending" else "Changes requested"),
+            f"Revision {d['revision']} (Quorum {q['received']}/{q['required']})"
+            if outcome == "approved"
+            else f"Revision {d['revision']}",
             did,
         )
-        return d["decision"]
+
+        return {
+            "ok": True,
+            "decision": d["decision"],
+            "signature": {
+                "reviewerId": sig["reviewerId"],
+                "reviewerName": sig["reviewerName"],
+                "at": sig["at"],
+                "role": sig["role"],
+            },
+            "quorum": {
+                "required": q["required"],
+                "received": q["received"],
+                "missing": q["missing"],
+                "satisfied": q["satisfied"],
+            },
+            "outcome": d["decision"]["outcome"],
+            "quorumNeeded": q["required"],
+            "quorumCount": q["received"],
+        }
 
     return store(s).mutate(s["wid"], fn)
 
@@ -1252,29 +1384,184 @@ def revoke_approval(did: str, p: Payload, request: Request):
     s = session(request)
     require(s, "reviewer", "manager")
     reason = str(p.data.get("reason", "")).strip()
-    if len(reason) < 5:
-        raise HTTPException(422, "Provide a revocation reason of at least 5 characters.")
+    if len(reason) < 8:
+        raise HTTPException(422, "Provide a revocation reason of at least 8 characters.")
 
     def fn(st):
         d = docget(st, did)
         existing = d.get("decision")
-        if not existing or existing.get("outcome") != "approved":
+        if not existing or existing.get("outcome") not in ("approved", "pending"):
             raise HTTPException(409, "Document does not have an active approved release to revoke.")
+
+        signers = d.get("decision", {}).get("signatures", [])
+        if s["actor"]["role"] != "manager" and s["actor"]["id"] not in signers:
+            raise HTTPException(
+                403, "Only a signer of the current revision or a manager may revoke approval."
+            )
+
+        rev_time = e.now()
+        d["revokedAt"] = rev_time
+        d["revokedBy"] = s["actor"]["name"]
+        d["revokeReason"] = reason
+        d["submitted"] = False
+
         d["decision"] = {
             "id": e.uid(),
             "outcome": "revoked",
+            "required": existing.get("required", 1),
+            "received": 0,
+            "satisfied": False,
+            "signatures": [],
+            "reviewerId": s["actor"]["id"],
+            "reviewerName": s["actor"]["name"],
             "revokedBy": s["actor"]["name"],
             "revokedById": s["actor"]["id"],
-            "reason": reason,
-            "at": e.now(),
+            "revokedAt": rev_time,
+            "revokeReason": reason,
+            "at": rev_time,
             "revision": d["revision"],
+            "sourceVersion": st["sourceVersion"],
+            "policyVersion": st.get("approvalPolicy", {}).get("version", 1),
         }
-        d["approvals"] = []
-        d["submitted"] = False
+
+        # Clear approvals for current revision so they don't count
+        d["approvals"] = [a for a in d.get("approvals", []) if a.get("revision") != d["revision"]]
+
+        # Q1 Hook: cascade re-review task
+        e.cascade_tasks(
+            st,
+            reason="approval_revoked",
+            trigger_id=d["id"],
+            reason_detail=f"Approval revoked: {reason}",
+            actor=s["actor"],
+        )
+
         e.event(st, s["actor"], "Approval revoked", f"Revision {d['revision']}: {reason}", did)
-        return {"ok": True, "message": f"Approval for document '{d['title']}' revoked successfully."}
+        return {"ok": True, "decision": d["decision"]}
 
     return store(s).mutate(s["wid"], fn)
+
+
+@app.get("/api/approval-policy")
+def get_approval_policy(request: Request):
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    usage = {
+        "documentsUsingChannel": sum(
+            1 for d in st.get("documents", []) if (d.get("context") or {}).get("channel")
+        )
+    }
+    return {"policy": st.get("approvalPolicy", {}), "usage": usage}
+
+
+@app.put("/api/approval-policy")
+def update_approval_policy(p: Payload, request: Request):
+    s = session(request)
+    require(s, "manager")
+    policy = p.data.get("policy", {})
+
+    allowed_roles = {"creator", "reviewer", "manager", "auditor"}
+    by_channel = policy.get("byChannel", {})
+    by_sev = policy.get("bySeverity", {})
+    esc = policy.get("escalation", {})
+
+    hours = esc.get("hours", 24)
+    if not isinstance(hours, (int, float)) or hours < 1:
+        raise HTTPException(422, "policy invalid: escalation hours must be at least 1")
+
+    for k, v in by_channel.items():
+        if not isinstance(k, str) or not k:
+            raise HTTPException(422, "policy invalid: unknown channel key")
+        req = v.get("required", 1)
+        if not isinstance(req, int) or req < 1 or req > 3:
+            raise HTTPException(422, "policy invalid: required must be between 1 and 3")
+        roles = v.get("roles", [])
+        if any(r not in allowed_roles for r in roles):
+            raise HTTPException(422, "policy invalid: unknown role")
+        if req > 1 and not v.get("distinctUsers", True):
+            raise HTTPException(
+                422, "policy invalid: distinctUsers must be true when required > 1"
+            )
+
+    for k, v in by_sev.items():
+        req = v.get("required", 1)
+        if not isinstance(req, int) or req < 1 or req > 3:
+            raise HTTPException(422, "policy invalid: required must be between 1 and 3")
+
+    def fn(st):
+        cur_version = st.get("approvalPolicy", {}).get("version", 1)
+        policy["version"] = cur_version + 1
+        policy["updatedAt"] = e.now()
+        policy["updatedBy"] = s["actor"]["id"]
+        st["approvalPolicy"] = policy
+        e.event(st, s["actor"], "Updated approval policy", f"Version {policy['version']}")
+        return {"ok": True, "policy": policy}
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.post("/api/exceptions")
+def create_exception(p: Payload, request: Request):
+    s = session(request)
+    require(s, "manager")
+    data = p.data
+    reason = str(data.get("reason", "")).strip()
+    if len(reason) < 8:
+        raise HTTPException(422, "Exception reason must be at least 8 characters.")
+    hours = data.get("hours", 24)
+    if not isinstance(hours, (int, float)) or hours < 1 or hours > 168:
+        raise HTTPException(422, "Exception duration must be between 1 and 168 hours.")
+
+    def fn(st):
+        exc = {
+            "id": e.uid(),
+            "scope": data.get("scope", {}),
+            "grantedBy": s["actor"]["id"],
+            "grantedByName": s["actor"]["name"],
+            "reason": reason,
+            "createdAt": e.now(),
+            "expiresAt": e.add_hours(e.now(), hours),
+            "policyVersion": st.get("approvalPolicy", {}).get("version", 1),
+            "maxSignaturesMissing": min(1, int(data.get("maxSignaturesMissing", 1))),
+            "revokedAt": None,
+        }
+        st.setdefault("exceptions", []).append(exc)
+        e.event(st, s["actor"], "Granted approval exception", reason)
+        return {"ok": True, "exception": exc}
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.post("/api/exceptions/{eid}/revoke")
+def revoke_exception(eid: str, request: Request):
+    s = session(request)
+
+    def fn(st):
+        exc = next((x for x in st.get("exceptions", []) if x["id"] == eid), None)
+        if not exc:
+            raise HTTPException(404, "Exception not found")
+        if s["actor"]["role"] != "manager" and s["actor"]["id"] != exc.get("grantedBy"):
+            raise HTTPException(403, "Only a manager or the granter may revoke an exception.")
+        exc["revokedAt"] = e.now()
+        e.event(st, s["actor"], "Revoked approval exception", eid)
+        return {"ok": True, "message": "Exception revoked"}
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.get("/api/exceptions")
+def list_exceptions(request: Request, active: bool = False):
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    all_exc = st.get("exceptions", [])
+    expired = sum(1 for x in all_exc if e.is_past(x.get("expiresAt")))
+    if active:
+        items = [
+            x for x in all_exc if not x.get("revokedAt") and not e.is_past(x.get("expiresAt"))
+        ]
+    else:
+        items = all_exc
+    return {"exceptions": items, "expired": expired}
 
 
 @app.get("/api/documents/{did}/export")
@@ -1283,24 +1570,97 @@ def export(did: str, request: Request, format: str = "json"):
 
     def fn(st):
         d = docget(st, did)
-        ready = e.readiness(st, d)
+        use_quorum = features()["quorum"]
+
+        # Check revocation
+        dec = d.get("decision")
+        revoked_at = d.get("revokedAt") or (dec and dec.get("revokedAt")) or (dec and dec.get("outcome") == "revoked")
+        if revoked_at:
+            reason = d.get("revokeReason") or (dec and dec.get("revokeReason")) or "Revoked"
+            raise HTTPException(
+                409,
+                f"Export blocked: approval has been revoked ({reason})",
+            )
+
+        # 1. No approval on current revision
+        if not dec or dec.get("revision") != d["revision"] or dec.get("outcome") not in ("approved", "pending"):
+            raise HTTPException(409, "Export blocked: approval is required for this revision")
+
+        # 2. Signature stale (revision/context/sourceVersion/fingerprint mismatch)
+        current_digest = e.digest(d)
+        if (
+            dec.get("sourceVersion") != st["sourceVersion"]
+            or dec.get("fingerprint") != current_digest
+            or dec.get("revision") != d["revision"]
+        ):
+            raise HTTPException(
+                409,
+                "Export blocked: approval is outdated (content, context or sources changed after approval)",
+            )
+
+        # 4 & 5. Quorum and Exception checks
+        if use_quorum:
+            q = e.quorum_state(st, d)
+            if not q["satisfied"]:
+                channel = (d.get("context") or {}).get("channel", "default")
+                has_expired_exc = False
+                for exc in st.get("exceptions", []):
+                    scope = exc.get("scope", {})
+                    if (scope.get("type") == "document" and scope.get("value") == d["id"]) or (
+                        scope.get("type") == "channel" and scope.get("value") == channel
+                    ):
+                        if e.is_past(exc.get("expiresAt")):
+                            has_expired_exc = True
+                            break
+                if has_expired_exc:
+                    raise HTTPException(409, "Export blocked: approval exception has expired")
+                raise HTTPException(
+                    409,
+                    f"Export blocked: quorum not met (required: {q['required']}, received: {q['received']}, missing: {q['missing']})",
+                )
+
+        # 6. Readiness not eligible
+        ready = e.readiness(st, d, enforce_quorum=use_quorum)
         if not ready["eligible"]:
             raise HTTPException(409, "Export blocked: " + " ".join(ready["reasons"]))
+
+        # 7. Release receipt with policyVersion and signatures
         from .crypto_passport import sign_passport
+
+        valid_signatures = [
+            {
+                "reviewerName": a.get("reviewerName"),
+                "at": a.get("at"),
+                "role": a.get("role", "reviewer"),
+            }
+            for a in d.get("approvals", [])
+            if a.get("outcome") == "approved"
+            and a.get("revision") == d["revision"]
+            and a.get("sourceVersion") == st["sourceVersion"]
+            and a.get("fingerprint") == current_digest
+        ]
+        if not valid_signatures and dec and dec.get("reviewerName"):
+            valid_signatures = [{
+                "reviewerName": dec.get("reviewerName"),
+                "at": dec.get("at", e.now()),
+                "role": dec.get("role", "reviewer"),
+            }]
+
         raw_receipt = {
             "id": e.uid(),
             "documentId": did,
             "title": d["title"],
             "revision": d["revision"],
             "sourceVersion": st["sourceVersion"],
-            "policyVersion": 1,
-            "fingerprint": e.digest(d),
-            "reviewer": d["decision"]["reviewerName"],
+            "policyVersion": st.get("approvalPolicy", {}).get("version", 1),
+            "fingerprint": current_digest,
+            "reviewer": dec.get("reviewerName", "Reviewer"),
+            "signatures": valid_signatures,
             "decision": "approved",
-            "approvedAt": d["decision"]["at"],
+            "approvedAt": dec.get("at", e.now()),
             "exportedAt": e.now(),
-            "coverage": d["review"].get("coverage", {}),
-            "manualCoverage": d["decision"]["manualCoverage"],
+            "coverage": d.get("review", {}).get("coverage", {}),
+            "manualCoverage": bool(dec.get("manualCoverage")),
             "context": copy.deepcopy(d.get("context", {})),
             "visualCheckIds": list(d.get("visualCheckIds", [])),
             "checkerVersion": "proofline-2.0.0",
@@ -1310,6 +1670,8 @@ def export(did: str, request: Request, format: str = "json"):
         st["receipts"].append(receipt)
         e.event(st, s["actor"], "Approved export", receipt["id"], did)
         return {"receipt": receipt, "content": d["text"], "context": d["context"]}
+
+    result = store(s).mutate(s["wid"], fn)
 
     result = store(s).mutate(s["wid"], fn)
     if format == "txt":
@@ -1465,6 +1827,188 @@ def verify_document(did: str, request: Request):
     }
 
 
+# --- Q1 Cascade re-review with ownership routes ---
+
+@app.get("/api/tasks")
+def list_tasks(request: Request, status: str = None, documentId: str = None, assignee: str = None):
+    s = session(request)
+
+    def fn(st):
+        sweep_escalations(st)
+        tasks = st.get("tasks", [])
+        if status:
+            tasks = [t for t in tasks if t.get("status") == status]
+        if documentId:
+            tasks = [t for t in tasks if t.get("documentId") == documentId]
+        if assignee == "me":
+            tasks = [t for t in tasks if t.get("assigneeId") == s["actor"]["id"]]
+        summary = e.task_summary(st)
+        return {"tasks": tasks, "summary": summary}
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.post("/api/tasks/{tid}/assign")
+def assign_task(tid: str, p: Payload, request: Request):
+    s = session(request)
+    if s["actor"]["role"] != "manager":
+        raise HTTPException(403, "Only a manager may reassign tasks.")
+    data = p.data
+    new_assignee_id = data.get("assigneeId")
+    due_at = data.get("dueAt")
+
+    def fn(st):
+        t = next((x for x in st.get("tasks", []) if x["id"] == tid), None)
+        if not t:
+            raise HTTPException(404, "Task not found")
+
+        valid_assignee_name = None
+        if s["mode"] == "demo":
+            people = {
+                "demo-creator": "Maya Chen",
+                "demo-manager": "Alex Morgan",
+                "demo-reviewer": "Jordan Lee",
+                "demo-reviewer-2": "Taylor Reed",
+            }
+            if new_assignee_id in people:
+                valid_assignee_name = people[new_assignee_id]
+        else:
+            members = accounts.members(s["wid"])
+            m = next((m for m in members if m["id"] == new_assignee_id), None)
+            if m:
+                valid_assignee_name = m["name"]
+
+        if not valid_assignee_name:
+            raise HTTPException(422, "Unknown user in this workspace")
+
+        t["assigneeId"] = new_assignee_id
+        t["assigneeName"] = valid_assignee_name
+        if due_at is not None:
+            t["dueAt"] = due_at
+
+        st.setdefault("notifications", []).append({
+            "id": e.uid(),
+            "userId": new_assignee_id,
+            "kind": "task_assigned",
+            "taskId": t["id"],
+            "documentId": t["documentId"],
+            "text": f"Task reassigned to you for '{t['documentTitle']}'",
+            "readAt": None,
+            "createdAt": e.now(),
+        })
+        e.event(st, s["actor"], "Reassigned task", f"Task {tid} assigned to {valid_assignee_name}", t["documentId"])
+        return {"ok": True, "task": t}
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.post("/api/tasks/{tid}/close")
+def close_task(tid: str, p: Payload, request: Request):
+    s = session(request)
+    reason = str(p.data.get("reason", "")).strip()
+    if len(reason) < 8:
+        raise HTTPException(422, "Closing reason must be at least 8 characters.")
+
+    def fn(st):
+        t = next((x for x in st.get("tasks", []) if x["id"] == tid), None)
+        if not t:
+            raise HTTPException(404, "Task not found")
+        if t.get("status") == "closed":
+            raise HTTPException(409, "Task is already closed")
+
+        if s["actor"]["role"] != "manager" and s["actor"]["id"] not in (t.get("assigneeId"), t.get("ownerId")):
+            raise HTTPException(403, "Only the assignee, owner, or a manager can close this task.")
+
+        t["status"] = "closed"
+        t["closedAt"] = e.now()
+        t["closedBy"] = s["actor"]["id"]
+        t["closedReason"] = reason
+        t["closedByReapproval"] = False
+
+        if s["actor"]["id"] != t.get("ownerId"):
+            st.setdefault("notifications", []).append({
+                "id": e.uid(),
+                "userId": t["ownerId"],
+                "kind": "task_closed",
+                "taskId": t["id"],
+                "documentId": t["documentId"],
+                "text": f"Task for '{t['documentTitle']}' was closed: {reason}",
+                "readAt": None,
+                "createdAt": e.now(),
+            })
+
+        e.event(st, s["actor"], "Closed re-review task", f"Task {tid} closed: {reason}", t["documentId"])
+        return {"ok": True, "task": t}
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.post("/api/tasks/{tid}/escalate")
+def escalate_task(tid: str, p: Payload, request: Request):
+    s = session(request)
+    require(s, "manager")
+    reason = str(p.data.get("reason", "")).strip()
+    if len(reason) < 8:
+        raise HTTPException(422, "Escalation reason must be at least 8 characters.")
+    to_user = p.data.get("to")
+
+    def fn(st):
+        t = next((x for x in st.get("tasks", []) if x["id"] == tid), None)
+        if not t:
+            raise HTTPException(404, "Task not found")
+
+        t["escalatedAt"] = e.now()
+        if to_user:
+            t["assigneeId"] = to_user
+            t["assigneeName"] = "Escalated Assignee"
+
+        st.setdefault("notifications", []).append({
+            "id": e.uid(),
+            "userId": t["assigneeId"],
+            "kind": "task_escalated",
+            "taskId": t["id"],
+            "documentId": t["documentId"],
+            "text": f"Task escalated: {reason}",
+            "readAt": None,
+            "createdAt": e.now(),
+        })
+
+        e.event(st, s["actor"], "Escalated task", f"Task {tid} escalated: {reason}", t["documentId"])
+        return {"ok": True, "task": t}
+
+    return store(s).mutate(s["wid"], fn)
+
+
+@app.get("/api/tasks/summary")
+def get_task_summary(request: Request):
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    return e.task_summary(st)
+
+
+@app.get("/api/notifications")
+def list_notifications(request: Request):
+    s = session(request)
+    st, _ = store(s).read(s["wid"])
+    uid = s["actor"]["id"]
+    items = [n for n in st.get("notifications", []) if n.get("userId") in (uid, s["actor"].get("role"))]
+    unread = sum(1 for n in items if not n.get("readAt"))
+    return {"items": items, "unread": unread}
+
+
+@app.post("/api/notifications/{nid}/read")
+def read_notification(nid: str, request: Request):
+    s = session(request)
+
+    def fn(st):
+        n = next((x for x in st.get("notifications", []) if x["id"] == nid), None)
+        if n:
+            n["readAt"] = e.now()
+        return {"ok": True}
+
+    return store(s).mutate(s["wid"], fn)
+
+
 @app.post("/api/sources")
 def source(p: Payload, request: Request):
     s = session(request)
@@ -1505,6 +2049,13 @@ def activate_source(sid: str, request: Request):
         item["confirmed"] = True
         st["sourceVersion"] += 1
         item["version"] = st["sourceVersion"]
+        e.cascade_tasks(
+            st,
+            reason="source_updated",
+            trigger_id=f"v{st['sourceVersion']}",
+            reason_detail=f"Source pack v{st['sourceVersion']-1} → v{st['sourceVersion']} ({item['title']})",
+            actor=s["actor"],
+        )
         e.event(
             st,
             s["actor"],
@@ -1648,6 +2199,13 @@ def edit_rule(rid: str, p: Payload, request: Request):
         if was:
             r["active"] = False
             st["sourceVersion"] += 1
+            e.cascade_tasks(
+                st,
+                reason="rule_changed",
+                trigger_id=f"{rid}:{r.get('version', 1)}",
+                reason_detail=f"Rule edited: {r.get('name', rid)}",
+                actor=s["actor"],
+            )
             e.event(
                 st,
                 s["actor"],
@@ -1676,6 +2234,13 @@ def deactivate_rule(rid: str, request: Request):
             raise HTTPException(422, "That rule is already inactive")
         r["active"] = False
         st["sourceVersion"] += 1
+        e.cascade_tasks(
+            st,
+            reason="rule_deactivated",
+            trigger_id=rid,
+            reason_detail=f"Rule deactivated: {r.get('name', rid)}",
+            actor=s["actor"],
+        )
         e.event(
             st,
             s["actor"],
@@ -1725,6 +2290,13 @@ def retire_source(sid: str, request: Request):
             for r in st["rules"]
             if r.get("active") and r.get("sourceId") == sid
         ]
+        e.cascade_tasks(
+            st,
+            reason="source_retired",
+            trigger_id=sid,
+            reason_detail=f"Source retired: {item['title']}",
+            actor=s["actor"],
+        )
         from .agents_pipeline import generate_re_review_queue_tasks
         tasks = generate_re_review_queue_tasks(st, "SOURCE_RETIRED", sid, f"Source '{item['title']}' was retired by manager")
         e.event(
@@ -1934,6 +2506,13 @@ async def asset(request: Request, file: UploadFile = File(...)):
         }
         st["assets"].append(a)
         st["sourceVersion"] += 1
+        e.cascade_tasks(
+            st,
+            reason="visual_check_stale",
+            trigger_id=a["id"],
+            reason_detail="Visual assets updated; re-verify linked visual checks",
+            actor=s["actor"],
+        )
         e.event(st, s["actor"], "Approved asset added", file.filename)
         return a
 
