@@ -3,16 +3,23 @@
 import hashlib
 import json
 import os
+import re
 import subprocess
+import sys
 import pytest
 from scripts.eval_quality import compute_sha256, match_findings, run_evaluation
 
 
 def test_dataset_has_thirty_items_and_valid_schema():
-    """30 lines; every item validates against the schema; category quotas exactly as §4.1."""
+    """30 lines; every item validates against schema; category quotas exactly as §4.1; honest provenance."""
     dataset_path = "benchmark/dataset.v1.jsonl"
+    manifest_path = "benchmark/manifest.json"
     assert os.path.exists(dataset_path), "Dataset file missing"
+    assert os.path.exists(manifest_path), "Manifest file missing"
     
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+
     items = []
     with open(dataset_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -41,7 +48,9 @@ def test_dataset_has_thirty_items_and_valid_schema():
         assert "expectedFindings" in item
         assert "mustNotFlag" in item
         assert "notes" in item
-        assert item.get("source") == "human"
+        assert len(str(item["notes"]).strip()) > 0, f"Empty notes in item {item['id']}"
+        assert re.search(r"RULE-\d+", str(item["notes"])) is None, f"Item {item['id']} note references engine rule ID"
+        assert item.get("provenance") in ("team_labelled", "labelled by the team; inter-annotator agreement not measured")
         
         cat = item["category"]
         actual_quotas[cat] = actual_quotas.get(cat, 0) + 1
@@ -49,9 +58,12 @@ def test_dataset_has_thirty_items_and_valid_schema():
     for cat, quota in expected_quotas.items():
         assert actual_quotas.get(cat, 0) == quota, f"Category {cat} count {actual_quotas.get(cat, 0)} != {quota}"
 
+    # Manifest and dataset agree on provenance model
+    assert "not measured" in manifest.get("provenance", "")
+
 
 def test_dataset_sha_matches_manifest():
-    """Recomputed hash equals manifest.json.sha256."""
+    """Recomputed hash equals manifest.json.sha256; kappa/annotators contract strictly asserted."""
     dataset_path = "benchmark/dataset.v1.jsonl"
     manifest_path = "benchmark/manifest.json"
     
@@ -61,16 +73,27 @@ def test_dataset_sha_matches_manifest():
         
     assert manifest.get("sha256") == actual_sha
     assert manifest.get("items") == 30
-    assert manifest.get("kappa", 0.0) >= 0.60
+
+    kappa = manifest.get("kappa")
+    annotators = manifest.get("annotators")
+    if kappa is not None:
+        assert isinstance(annotators, list) and len(annotators) >= 2, "Non-null kappa requires at least 2 real annotators"
+        assert isinstance(kappa, (int, float)) and kappa >= 0.60
+    else:
+        assert annotators == [] or annotators is None, "Null kappa cannot list annotators"
+        assert "not measured" in manifest.get("provenance", "")
 
 
 def test_no_item_is_derived_from_engine_output():
-    """Each item has non-empty notes and a human expectedFindings; asserts a source: 'human' marker per item."""
+    """Asserts that each item has valid provenance, notes do not cite internal engine rule IDs, and non-empty descriptions."""
     with open("benchmark/dataset.v1.jsonl", "r", encoding="utf-8") as f:
         for line in f:
             item = json.loads(line.strip())
-            assert item.get("source") == "human"
-            assert len(str(item.get("notes", "")).strip()) > 5
+            assert item.get("provenance") in ("team_labelled", "labelled by the team; inter-annotator agreement not measured")
+            notes = str(item.get("notes", "")).strip()
+            assert len(notes) > 5
+            # Invariant: notes must be plain compliance descriptions and never reference internal engine rule IDs
+            assert re.search(r"RULE-\d+", notes) is None, f"Item {item['id']} note cites internal engine rule ID: {notes}"
             # Non-empty expectedFindings for non-negative categories
             if item["category"] != "valid_must_not_flag":
                 assert len(item["expectedFindings"]) >= 1
@@ -181,4 +204,36 @@ def test_eval_runs_offline_without_provider():
     )
     assert code == 0
     assert res["overall"] == "pass"
+
+
+def test_evaluator_exits_one_on_regression(tmp_path):
+    """Evaluator CLI exits 1 when an elevated gate or regression threshold trips, leaving committed data untouched."""
+    # Write a temporary gates file with an impossible precision threshold (1.01)
+    temp_gates = {
+        "rules": {"precision": 1.01, "recall": 0.90, "quoteValidity": 1.00},
+        "ai": {"precision": 0.80, "recall": 0.75, "fpr": 0.15, "quoteValidity": 1.00, "failureRate": 0.05},
+        "regression": {"maxAbsoluteDrop": 0.02},
+    }
+    gate_path = str(tmp_path / "temp_gates.json")
+    with open(gate_path, "w", encoding="utf-8") as f:
+        json.dump(temp_gates, f)
+
+    out_path = str(tmp_path / "temp_results.json")
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "scripts/eval_quality.py",
+            "--offline",
+            "--dataset", "benchmark/dataset.v1.jsonl",
+            "--manifest", "benchmark/manifest.json",
+            "--gates", gate_path,
+            "--baseline", "benchmark/results.baseline.json",
+            "--out", out_path,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 1, f"Expected evaluator to exit 1 on gate trip, got {proc.returncode}"
+    assert "overall=fail" in proc.stdout or "Quality gate check failed" in proc.stdout
+
 

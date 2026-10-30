@@ -1,4 +1,4 @@
-"""Proofline 2.0 - Cryptographic Approval Passport Module
+"""Proofline (v0.2.0) - Cryptographic Approval Passport Module
 Implements canonical SHA-256 artifact hashing and Ed25519 digital signatures.
 """
 
@@ -137,13 +137,20 @@ def verify_passport(receipt: Dict[str, Any], candidate_text: Optional[str] = Non
     overall_valid = sig_valid and integrity_valid
 
     status = "AUTHENTIC_AND_VERIFIED"
+    sig_status = "signature verified"
     if not sig_valid:
-        status = "INVALID_SIGNATURE"
+        if not receipt.get("publicKey") or receipt.get("publicKey") != get_public_key_hex():
+            status = "SIGNATURE_UNVERIFIABLE_KEY_ROTATED"
+            sig_status = "signature unverifiable: key rotated"
+        else:
+            status = "INVALID_SIGNATURE"
+            sig_status = "signature invalid"
     elif tamper_detected:
         status = "CONTENT_INTEGRITY_COMPROMISED"
 
     return {
         "status": status,
+        "signatureStatus": sig_status,
         "valid": overall_valid,
         "signatureValid": sig_valid,
         "integrityValid": integrity_valid,
