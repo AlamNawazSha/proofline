@@ -66,3 +66,4 @@
   - Automated regulatory mapping for EU AI Act, FTC Truth in Advertising, and FDA promotional compliance.
 - **SOC2 Type II & ISO 27001 Compliance Export**:
   - One-click cryptographically verifiable auditor export pack containing immutable block ledgers, timestamped verification passports, and annotator agreement logs.
+

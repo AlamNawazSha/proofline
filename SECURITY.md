@@ -78,3 +78,4 @@ We welcome responsible security research. If you discover a security vulnerabili
 1. Do **not** open a public issue.
 2. Email the maintainers at `security@proofline.dev` with technical reproduction steps.
 3. We acknowledge receipt within 24 hours and aim to release patches within 72 hours.
+

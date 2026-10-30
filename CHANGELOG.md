@@ -50,3 +50,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Next.js 15 enterprise UI with evidence graph, redline correction, and policy studio.
 - Initial multi-format ingestion for text, markdown, PDF, docx, and CSV.
 - PBKDF2 local account authentication and workspace isolation.
+
