@@ -1,4 +1,4 @@
-# Run Proofline 2.0 Locally
+# Run Proofline Locally
 
 Requirements: Python 3.11+, Node.js 18+.
 
@@ -19,7 +19,7 @@ Open `http://localhost:3000` in your browser.
 ```bash
 python -m pytest tests/ -q
 ```
-Result: **96 passing** (all baseline invariants + Proofline 2.0 cryptographic, multi-agent, and security tests).
+Result: **147 passing** (all baseline invariants + Proofline cryptographic, multi-agent, and security tests).
 
 ### Production Build Validation
 ```bash

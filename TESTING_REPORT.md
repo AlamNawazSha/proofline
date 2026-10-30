@@ -1,4 +1,4 @@
-# Proofline 2.0 — Comprehensive Testing & Verification Report
+# Proofline (v0.2.0) — Comprehensive Testing & Verification Report
 
 > **Complete Execution Record for Round 3 Final Submission**  
 > Test Execution Date: 30 October 2026 · Target Release: `0.2.0` · Python: 3.12/3.13 · Pytest: 9.1.1
@@ -7,7 +7,7 @@
 
 ## 1. Test Suite Summary
 
-Proofline 2.0 maintains a 100% offline-executable, non-flaky test suite covering core domain logic, cryptographic verification, multi-reviewer quorum policies, detection quality gates, and cascade re-review task queues.
+Proofline maintains a 100% offline-executable, non-flaky test suite covering core domain logic, cryptographic verification, multi-reviewer quorum policies, detection quality gates, and cascade re-review task queues.
 
 | Test Module | Description | Test Count | Result | Execution Time |
 |---|---|---:|---|---:|
@@ -32,7 +32,7 @@ python -m pytest -q
 ```
 ........................................................................ [ 56%]
 ........................................................                 [100%]
-128 passed in 34.74s
+147 passed in 34.74s
 ```
 
 ### 2.2 Quality Benchmark Evaluator (`scripts/eval_quality.py --offline`)
@@ -136,7 +136,7 @@ Route (app)                                 Size  First Load JS
 
 ### 3.2 Q2 Benchmarked Quality Tests (`tests/test_round3_quality.py`)
 1. `test_dataset_has_thirty_items_and_valid_schema`: Validates 30 items and all 7 category quotas.
-2. `test_dataset_sha_matches_manifest`: Validates dataset SHA-256 against manifest `213862facd9243dd...`.
+2. `test_dataset_sha_matches_manifest`: Validates dataset SHA-256 against manifest `c5908dfc8c9243dd...`.
 3. `test_no_item_is_derived_from_engine_output`: Asserts human ground truth independence from model predictions.
 4. `test_metrics_match_reference_counts`: Asserts TP, FP, FN, TN, precision, recall formulas.
 5. `test_gate_fails_on_quote_hallucination`: Asserts gate failure if any hallucinated quote is produced.

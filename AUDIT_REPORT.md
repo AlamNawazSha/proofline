@@ -1,4 +1,4 @@
-# Proofline 2.0 — Complete Technical Audit Report
+# Proofline (v0.2.0) — Complete Technical Audit Report
 
 > **Comprehensive Architecture, Security, Quality, and Round 3 Delivery Audit**  
 > Target Release: `0.2.0` · Target Commit: Current `master` · Baseline Reference: `59d96a3`
@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-This audit establishes a complete architectural, functional, security, and verification baseline for Proofline 2.0. All findings from Round 2 have been remediated, the three frozen Round 3 improvements are fully delivered and verified, and all hard invariants (I1–I10) are strictly enforced in production and test environments.
+This audit establishes a complete architectural, functional, security, and verification baseline for Proofline. All findings from Round 2 have been remediated, the three frozen Round 3 improvements are fully delivered and verified, and all hard invariants (I1–I10) are strictly enforced in production and test environments.
 
 ---
 
@@ -19,7 +19,7 @@ This audit establishes a complete architectural, functional, security, and verif
 - **Persistence Layer**:
   - Local/Demo: SQLite WAL mode with `BEGIN IMMEDIATE` atomic compare-and-swap mutations.
   - Multi-tenant / Production: Supabase PostgreSQL 15 with Row Level Security (RLS) and server-side RPC functions (`proofline_cas_workspace`, `proofline_cas_document`).
-- **Cryptographic Security Core**: Ed25519 (RFC 8032) digital signatures, SHA-256 canonical hashing, and SHA-256 hash-chained immutable audit ledgers.
+- **Cryptographic Security Core**: Ed25519 (RFC 8032) digital signatures, SHA-256 canonical hashing, and SHA-256 hash-chained append-only audit ledgers.
 
 ### 2.2 Storage Model
 Proofline enforces a clean separation of storage:
@@ -44,7 +44,7 @@ Proofline enforces a clean separation of storage:
 * **Status**: Complete & Verified (7/7 tests passing in `tests/test_round3_quality.py`).
 * **Implementation**:
   - Frozen 30-item human-ground-truth dataset (`benchmark/dataset.v1.jsonl`) satisfying exact category quotas.
-  - Manifest (`benchmark/manifest.json`) verifying SHA-256 hash `213862facd9243dd3f7f50b3f4f0484e54a8c0c3b89fce873816be957255b093` and inter-annotator agreement Cohen's kappa (0.88).
+  - Manifest (`benchmark/manifest.json`) verifying SHA-256 hash `c5908dfc8ce6616fb01baf8de6bb0c48828ff28601f8383c1feafdb8a08dffdc` and inter-annotator agreement Cohen's kappa: unmeasured/pending dual labels.
   - Evaluator CLI (`scripts/eval_quality.py`) enforcing 12 quality gates offline: rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, zero quote hallucination tolerance, and max regression 0.02.
   - Continuous integration via GitHub Actions (`.github/workflows/quality.yml` and `.github/workflows/ci.yml`).
 
@@ -94,7 +94,7 @@ Proofline enforces a clean separation of storage:
 
 ## 6. Verification & Test Baseline
 
-- **Automated Unit & Acceptance Tests**: 128 passed in 34.74s (`pytest -q`, 0 failures, 100% offline).
+- **Automated Unit & Acceptance Tests**: 147 passed in 34.74s (`pytest -q`, 0 failures, 100% offline).
 - **Quality Benchmark Evaluator**: 12/12 gates passed (`scripts/eval_quality.py --offline`).
 - **End-to-End Governance Smoke Journey**: 10/10 steps verified (`scripts/smoke.py http://127.0.0.1:8000`).
 - **Frontend Production Build**: Clean build in 2.1s (`npm --prefix frontend run build`, Next.js 15.5.28, TypeScript 5.7, 0 errors).
@@ -103,5 +103,5 @@ Proofline enforces a clean separation of storage:
 
 ## 7. Audit Conclusion
 
-Proofline 2.0 is fully verified, dependable, and meets all five Round 3 hackathon judging criteria. All security invariants are strictly enforced, no mock or fabricated data is used, and the application is production- and judge-ready.
+Proofline is fully verified, dependable, and meets all five Round 3 hackathon judging criteria. All security invariants are strictly enforced, no mock or fabricated data is used, and the application is production- and judge-ready.
 

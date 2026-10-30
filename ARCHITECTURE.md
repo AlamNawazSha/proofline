@@ -1,8 +1,8 @@
-# Proofline 2.0 Architecture & Technical Specification
+# Proofline Architecture & Technical Specification
 
-> **Autonomous Evidence Intelligence, AI Compliance, and Verifiable Approval Platform**
+> **Content Governance and Source-Bound Approval System**
 
-Proofline 2.0 is an enterprise content governance platform that replaces subjective AI confidence scores with **traceable evidence graphs, deterministic policy evaluation, multi-reviewer quorum approvals, automated re-review cascades, and Ed25519 cryptographic release passports**.
+Proofline is an enterprise content governance platform that replaces subjective AI confidence scores with **traceable evidence graphs, deterministic policy evaluation, multi-reviewer quorum approvals, automated re-review cascades, and Ed25519 cryptographic release passports**.
 
 ---
 
@@ -61,7 +61,7 @@ Proofline 2.0 is an enterprise content governance platform that replaces subject
 
 ## 2. Seven-Stage Multi-Agent Claim Verification Pipeline
 
-Proofline 2.0 avoids monolithic single-prompt LLM hallucinations by decomposing verification into 7 specialized, typed stages:
+Proofline avoids monolithic single-prompt LLM hallucinations by decomposing verification into 7 specialized, typed stages:
 
 | Stage | Agent Name | Input | Responsibility | Failure/Quarantine Mode |
 |---|---|---|---|---|
@@ -110,7 +110,7 @@ For library scale (up to 5,000+ documents):
 ```
 ┌───────────────────────────┐      SHA-256 Check       ┌────────────────────────┐
 │ benchmark/dataset.v1.jsonl│ ───────────────────────► │benchmark/manifest.json │
-│ (Exactly 30 human items)  │                          │(Hash + Kappa: 0.88)    │
+│ (Exactly 30 human items)  │                          │(SHA-256 verified; kappa: unmeasured)    │
 └─────────────┬─────────────┘                          └────────────────────────┘
               │
               ▼
@@ -192,6 +192,6 @@ flowchart TD
 4. **Tamper Detection**: Altering even one character modifies the digest, causing instant failure on passport verification.
 
 ### 4.2 Append-Only Hash-Chained Audit Ledger
-Every action appends a block to the immutable event log:
+Every action appends a block to the append-only event log:
 $$\text{Hash}_n = \text{SHA-256}(\text{Seq}_n \parallel \text{Timestamp}_n \parallel \text{Action}_n \parallel \text{Actor}_n \parallel \text{Hash}_{n-1})$$
 Any retroactive modification breaks the hash chain and is immediately flagged by the Audit Explorer.

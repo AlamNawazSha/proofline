@@ -13,7 +13,7 @@ Each item states what Round 2 already does, what Round 3 adds, how it is proven,
 ## 2. Measured detection quality for AI-assisted review
 
 - **Round 2 today:** deterministic keyword/claim rules work and are tested; the AI adapter validates structure and quotes but **has never run against a live provider**, so no quality number exists.
-- **Round 3 adds:** a frozen 30-item evaluation set (tone, unsupported claims, terminology, valid claims that must not be flagged, ambiguous text, conflicting sources, malformed responses), two independent annotators reconciling disagreements, and published precision, recall, false-positive rate, evidence-reference validity, latency and failure rate — kept separate for rule-based and AI findings.
+- **Round 3 adds:** a frozen 30-item evaluation set (tone, unsupported claims, terminology, valid claims that must not be flagged, ambiguous text, conflicting sources, malformed responses), annotators reconciling disagreements, and published precision, recall, false-positive rate, evidence-reference validity, latency and failure rate — kept separate for rule-based and AI findings.
 - **Acceptance test:** the evaluation script runs against the deployed build and emits a table; a change to the prompt or model must re-run it and cannot merge with a regression beyond a stated threshold.
 - **Why not now:** without provider access the only honest number is zero data points.
 

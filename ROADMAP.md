@@ -29,7 +29,7 @@
   - Per-document storage gateway (`Documents`) with optimistic CAS and state pagination.
 - **Benchmarked detection quality, enforced in CI (Q2)**:
   - Frozen 30-item human-ground-truth dataset with category quotas.
-  - Manifest SHA-256 integrity hash verification and Cohen's kappa (0.88).
+  - Manifest SHA-256 integrity hash verification and Cohen's kappa: unmeasured/pending dual labels.
   - 12 quality gates, offline model fixtures, and GitHub Actions CI workflow.
 - **Multi-reviewer approval policy (Q3)**:
   - Channel- and risk-driven dual quorum (`website: 2`, `press_release: 2`, `email: 1`, `high: 2`).
@@ -65,5 +65,5 @@
   - Parent/child policy inheritance across global subsidiaries (e.g. global legal rules inherited by regional marketing teams).
   - Automated regulatory mapping for EU AI Act, FTC Truth in Advertising, and FDA promotional compliance.
 - **SOC2 Type II & ISO 27001 Compliance Export**:
-  - One-click cryptographically verifiable auditor export pack containing immutable block ledgers, timestamped verification passports, and annotator agreement logs.
+  - One-click auditor export pack with cryptographic receipts containing append-only block ledgers, timestamped verification passports, and annotator agreement logs.
 

@@ -1,6 +1,6 @@
-# Proofline 2.0 — Round 3 Final Submission Document
+# Proofline — Round 3 Final Submission Document (v0.2.0)
 
-**Evidence-First AI Governance, Verifiable Quorum & Cryptographic Approval Platform**
+**Content Governance, Multi-Reviewer Quorum & Source-Bound Approval System**
 
 ---
 
@@ -8,17 +8,17 @@
 
 | Metric / Item | Round 3 Submission Details |
 |---|---|
-| **Product Name** | **Proofline 2.0** — Evidence-First AI Governance & Verifiable Approval Platform |
+| **Product Name** | **Proofline** (v0.2.0) — Content Governance & Source-Bound Approval System |
 | **Live Working Project Link** | https://proofline-ruby-three.vercel.app/ |
 | **Source Code Repository** | https://github.com/AlamNawazSha/proofline |
 | **Team Identifier** | `syedsuhailahamed.m26` |
 | **Submission Round** | **Round 3 — The Finish** (Final Hackathon Deliverable) |
 | **Submission Date** | 30 October 2026 |
-| **Automated Test Suite** | **128 passed in 34.74s** (`pytest -q` across `tests/test_core.py`, `tests/test_upgrades.py`, `tests/test_round3_improvements.py`, `tests/test_round3_tasks.py`, `tests/test_round3_quality.py`, `tests/test_round3_quorum.py`; 100% offline, 0 failures) |
+| **Automated Test Suite** | **147 passed in 19.29s** (`pytest -q` across all 9 test suites; 100% offline, 0 failures) |
 | **Benchmarked Quality Evaluator** | **12/12 gates passed** (`python scripts/eval_quality.py --offline`, CI-enforced via `.github/workflows/quality.yml`) |
 | **End-to-End Governance Smoke Test** | **All 10 steps verified** (`python scripts/smoke.py http://127.0.0.1:8000`) |
-| **Frontend Production Build** | **Compiled clean in 6.8s** (`npm --prefix frontend run build`, Next.js 15.5.28, React 19.1.0, TypeScript 5.7.0, zero errors) |
-| **Core Technology Stack** | FastAPI, Python 3.13, Ed25519 Cryptography, PyPDF, SQLite WAL / Supabase Adapter, Next.js 15, Tailwind CSS |
+| **Frontend Production Build** | **Compiled clean in 3.8s** (`npm --prefix frontend run build`, Next.js 15.5.28, React 19.1.0, TypeScript 5.7.0, zero errors) |
+| **Core Technology Stack** | FastAPI, Python 3.12, Ed25519 Cryptography, PyPDF, SQLite WAL / Supabase Adapter, Next.js 15, Tailwind CSS |
 
 ---
 
@@ -31,17 +31,17 @@ In `docs/ROUND2_SUBMISSION.md` and the Round 3 Specification, Proofline explicit
 * **Round 2 Baseline:** When a source or rule was changed or retired, the manager only received an ephemeral preview of affected documents, and approvals were invalidated. No persistent tasks, assignees, closure tracking, or notifications existed.
 * **Round 3 Delivery:**
   * **Phase A (Task Pipeline):** Dedicated `state["tasks"]` tracking collection. 7 hook points wired atomically inside `mutate` closures (source activated/retired, rule edited/deactivated, fact expired, approval revoked, visual stale). Creates deduplicated tasks assigned to document creator with due dates and SLA tracking. Closes automatically on re-approval (`closedByReapproval: True`) or manual justification (`≥ 8 chars`). In-app notification pipeline (`/api/notifications`; explicitly in-app only, no email/Slack claims).
-  * **Phase B (Per-Document Storage & Scalability):** Document storage gateway `Documents` (`backend/store.py`), SQLite table `documents` + index, Supabase `proofline_documents` + optimistic CAS RPC `proofline_cas_document`; library-scale state pagination `GET /api/state?documents=page|none|all` with `PAGE_SIZE=50` and `nextCursor`.
+  * **Phase B (Per-Document Storage & Scalability):** Document storage gateway `Documents` (`backend/store.py`), SQLite table `documents` + index, Supabase `proofline_documents` + optimistic CAS RPC `proofline_cas_document`; library-scale state pagination `GET /api/state?documents=page|none|all` with `PAGE_SIZE=50` and `nextCursor`. Scale proof (`scripts/scale_proof.py`) verified on 5,000 documents.
   * **API Surface:** `GET /api/tasks`, `POST /api/tasks/{tid}/assign`, `POST /api/tasks/{tid}/close`, `POST /api/tasks/{tid}/escalate`, `GET /api/tasks/summary`, `GET /api/notifications`, `POST /api/notifications/{nid}/read`.
   * **Automated Test Proof:** All 11 acceptance tests passing in `tests/test_round3_tasks.py` and verified in `scripts/smoke.py` Step 10.
 
 ### Improvement 2: Benchmarked detection quality, enforced in CI (Q2)
-* **Definition:** A frozen, human-labelled benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
-* **Round 2 Baseline:** Deterministic keyword/claim rules were tested; however, AI evaluation lacked an empirical frozen benchmark dataset or published metrics.
+* **Definition:** A frozen benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
+* **Round 2 Baseline:** Deterministic keyword/claim rules were tested; however, evaluation lacked an empirical frozen benchmark dataset or published metrics.
 * **Round 3 Delivery:**
   * **Frozen 30-Item Ground-Truth Dataset:** `benchmark/dataset.v1.jsonl` with exact category quotas: `tone` (4), `unsupported_claim` (5), `terminology` (4), `valid_must_not_flag` (6), `ambiguous` (4), `conflicting_sources` (4), `malformed_model` (3).
-  * **Manifest Integrity & Agreement:** `benchmark/manifest.json` storing SHA-256 hash (`213862facd9243dd3f7f50b3f4f0484e54a8c0c3b89fce873816be957255b093`), item count (30), annotators, and Cohen's kappa (0.88).
-  * **Evaluator CLI & Quality Gates:** `scripts/eval_quality.py --offline|--live` evaluates 12 gates (`benchmark/gates.json`): rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, quote validity = 1.0, failure rate ≤ 0.05. Zero tolerance for quote hallucination; max regression 0.02.
+  * **Manifest Integrity & Agreement:** `benchmark/manifest.json` storing SHA-256 hash (`c5908dfc8ce6616fb01baf8de6bb0c48828ff28601f8383c1feafdb8a08dffdc`), item count (30), and provenance metadata (`labelled by the team; inter-annotator agreement not measured`).
+  * **Evaluator CLI & Quality Gates:** `scripts/eval_quality.py --offline|--live` evaluates 12 gates (`benchmark/gates.json`): rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, quote validity = 1.0, failure rate ≤ 0.05. Zero tolerance for quote hallucination; max regression 0.02. Offline AI layer reported as fixture replay (authored replies, not a live model measurement).
   * **CI Quality Enforcement:** GitHub Actions workflow `.github/workflows/quality.yml` fails the build on any hash mismatch, quote hallucination, or metric regression.
   * **Automated Test Proof:** All 7 acceptance tests passing in `tests/test_round3_quality.py` and `scripts/eval_quality.py --offline` passing all 12 gates.
 
@@ -59,7 +59,7 @@ In `docs/ROUND2_SUBMISSION.md` and the Round 3 Specification, Proofline explicit
 
 ## 3. Complete Inventory of Features and User Journeys
 
-Proofline 2.0 covers six primary governance modules accessible via the top navigation:
+Proofline covers six primary governance modules accessible via the top navigation:
 
 ```
 [Content Library & Creator] ──► [Policy Studio] ──► [Approval Center & Quorum]
@@ -93,12 +93,12 @@ Proofline 2.0 covers six primary governance modules accessible via the top navig
 ### Module 5: Adversarial Lab & Model Evaluation
 * **Frozen 30-Item Benchmark:** Run comprehensive detection quality evaluations reporting precision, recall, F1, false positive rate, false negative rate, and quote validity.
 * **Interactive Adversarial Testing:** Test custom adversarial inputs against the detection engine with real-time classification.
-* **Annotator Agreement & Latency Telemetry:** Published evaluation metadata detailing multi-annotator agreement (Cohen's Kappa = 0.96) and sub-millisecond execution times.
+* **Annotator Agreement & Latency Telemetry:** Published evaluation metadata detailing provenance (team-labelled; inter-annotator agreement not measured pending dual labels) and sub-millisecond execution times.
 
 ### Module 6: Audit Explorer & Cryptographic Passport
 * **Cryptographic Release Receipt:** Exports Ed25519 digitally signed release receipts containing canonical SHA-256 digests over text, context, and visual checks.
 * **Tamper Verification:** Independent cryptographic verification (`verify_passport`) detects even single-character or single-whitespace alterations.
-* **Hash-Chained Audit Ledger:** Immutable, cryptographically chained event log (`SHA256(prevHash + eventData)`). The Audit Explorer validates ledger integrity from genesis to head and exports verified logs to CSV or JSON.
+* **Hash-Chained Audit Ledger:** Append-only, cryptographically chained event log (`SHA256(prevHash + eventData)`). The Audit Explorer validates ledger integrity from genesis to head and exports verified logs to CSV or JSON.
 
 ---
 
@@ -115,7 +115,7 @@ Proofline 2.0 covers six primary governance modules accessible via the top navig
  │                   Backend Gateway: FastAPI (Python 3.13)               │
  │       Role-Based Access Control • Rate Limiting • SSRF Protection      │
  ├───────────────────────────────────┬────────────────────────────────────┤
- │ Deterministic Policy Engine       │ Autonomous Agents Pipeline         │
+ │ Deterministic Policy Engine       │ Deterministic Pipeline Stages         │
  │ • Whole-word regex boundaries     │ • Atomic claim segmentation        │
  │ • Hyphen/space variants           │ • Hybrid BM25/keyword retrieval    │
  │ • Synonyms & numeric claims       │ • Impact cascade & re-review queue │
@@ -150,20 +150,21 @@ rootdir: C:\Users\91959\OneDrive\Desktop\all, configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.11.0, asyncio-1.4.0
 
-tests/test_core.py ....................................                  [ 36%]
-tests/test_proofline2.py .........                                       [ 45%]
-tests/test_round3_improvements.py ....                                   [ 49%]
-tests/test_upgrades.py ................................................. [100%]
-
-============================ 100 passed in 21.68s =============================
+============================ 147 passed in 19.29s =============================
 ```
 
 ### Breakdown of Test Suites
 * **`tests/test_core.py` (36 tests):** Core governance journeys, separation of duties, source staging, rule deactivation on source loss, visual asset aspect ratio & 8×8 hash matching, WCAG contrast formula, terminology boundaries, cross-workspace isolation.
 * **`tests/test_proofline2.py` (9 tests):** Ed25519 cryptographic passport signature and tamper detection, risk intelligence matrix, impact cascade calculation, adversarial benchmark execution, audit ledger hash chain verification, SSRF protection against private IP ranges, NL policy builder.
+* **`tests/test_round3_tasks.py` (11 tests):** Q1 Cascade re-review acceptance tests (lifecycle mutation hooks, task deduplication, re-approval closure, manager assignment, state pagination).
+* **`tests/test_round3_quality.py` (7 tests):** Q2 Benchmarked detection quality acceptance tests (dataset SHA verification, quote validity, regression gate drop block).
+* **`tests/test_round3_quorum.py` (10 tests):** Q3 Multi-reviewer approval policy acceptance tests (quorum counts, distinct signers, revocation, expired exception block, receipt formatting).
+* **`tests/test_quorum_matrix.py` (10 tests):** Q3 Table-driven matrix tests asserting every cell (single, double, duplicate, creator-as-signer, revocation, concurrent CAS, escalation deadline, policy version invalidation).
+* **`tests/test_crypto_rotation.py` (4 tests):** Key rotation lifecycle, public key export endpoint, unverifiable key rotated status, tamper detection.
+* **`tests/test_numeric_probes.py` (4 tests):** Number boundaries, versions, times, dates, phone numbers, preventing false positives while flagging real ungrounded claims.
 * **`tests/test_round3_improvements.py` (4 tests):**
   1. `test_re_review_queue_lifecycle`: Verified source retirement automatically creates tasks for affected documents with correct assignees, and tasks resolve with auditor notes.
-  2. `test_measured_detection_quality_30_case_benchmark`: Verified frozen 30-case benchmark executes and achieves 100% precision, 100% recall, 0% FPR, 0% FNR, and 100% quote validity.
+  2. `test_measured_detection_quality_30_case_benchmark`: Verified frozen 30-case benchmark executes (Rules: 100% precision, 95.8% recall, 0 quote hallucinations; AI: offline fixture replay).
   3. `test_multi_reviewer_quorum_enforcement`: Verified dual-quorum enforcement for press releases, rejection of duplicate approvals by the same reviewer, and explicit approval revocation.
   4. `test_ed25519_single_char_tamper_detection`: Verified single-character tampering in document text produces `CONTENT_INTEGRITY_COMPROMISED`.
 * **`tests/test_upgrades.py` (51 tests):** Decimal percentage formatting, guarantee synonym matching, prompt injection resilience, bearer token authentication, Supabase CAS RPC mutations, SQLite WAL pragmas, session rate limiting.
@@ -199,12 +200,12 @@ To maintain absolute intellectual honesty and transparency for Round 3 judging:
 * **Continuous Regulatory Feed Ingestion:** Connectors to FDA, SEC, and EU AI Act regulatory RSS/API feeds to automatically update governing source packs and trigger re-review queues.
 * **Document Version Branching & Merging:** Git-like branching for marketing campaigns, allowing teams to propose parallel changes with merge-conflict detection.
 
-### Phase 2: Autonomous Compliance & RAG Scaling (Months 4–6)
+### Phase 2: Automated Compliance & RAG Scaling (Months 4–6)
 * **Enterprise Multi-Tenant Vector RAG:** Hybrid BM25 + pgvector integration for large-scale source packs (>100,000 pages) with passage citation guarantees.
 * **Automated Redlining Plugin for Google Docs & Figma:** Real-time compliance linting sidecar for Google Docs and Figma via Proofline REST API.
 * **Hardware Security Module (HSM) Signing:** Optional integration with AWS CloudHSM or Azure Key Vault for hardware-backed Ed25519 key storage.
 
 ### Phase 3: Continuous Assurance & Ecosystem Governance (Months 7–12)
-* **SOC-2 Type II Continuous Evidence Attestation:** Automated generation of cryptographically verifiable audit trails directly consumable by external auditors.
+* **SOC-2 Type II Continuous Evidence Attestation:** Automated generation of independently verifiable audit trails directly consumable by external auditors.
 * **Multi-Modal Visual Compliance:** Advanced OCR and layout-aware computer vision for full-page PDF brochure typography, color contrast, and mandatory disclosure font-size verification.
 

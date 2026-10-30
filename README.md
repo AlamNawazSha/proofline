@@ -1,54 +1,65 @@
-# Proofline 2.0: Autonomous Evidence Intelligence, AI Compliance, and Verifiable Approval Platform
+# Proofline (v0.2.0)
 
-[![Tests](https://img.shields.io/badge/pytest-128%20passed-emerald)](file:///tests/)
-[![Next.js](https://img.shields.io/badge/Next.js-15.5.28%20(React%2019)-blue)](file:///frontend/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)](file:///backend/)
-[![Cryptography](https://img.shields.io/badge/Ed25519-RFC%208032%20Signed-cyan)](file:///backend/crypto_passport.py)
-[![Audit](https://img.shields.io/badge/Audit%20Ledger-SHA--256%20Hash--Chained-purple)](file:///backend/agents_pipeline.py)
-[![Round 3](https://img.shields.io/badge/Round%203-Finish%20Delivered-gold)](file:///docs/ROUND3_SUBMISSION.md)
+[![Tests](https://img.shields.io/badge/pytest-147%20passed-emerald)](tests/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5.28%20(React%2019)-blue)](frontend/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)](backend/)
+[![Cryptography](https://img.shields.io/badge/Ed25519-RFC%208032%20Signed-cyan)](backend/crypto_passport.py)
+[![Round 3](https://img.shields.io/badge/Round%203-Finish%20Delivered-gold)](docs/ROUND3_SUBMISSION.md)
 
 **Live Deployed Application:** [https://proofline-ruby-three.vercel.app/](https://proofline-ruby-three.vercel.app/)  
-**Round 3 Submission Document:** [`docs/ROUND3_SUBMISSION.md`](file:///docs/ROUND3_SUBMISSION.md)  
-**Round 3 Official Product PDF:** [`docs/Proofline_2.0_Final_Product_Submission.pdf`](file:///docs/Proofline_2.0_Final_Product_Submission.pdf)  
+**Round 3 Submission Document:** [`docs/ROUND3_SUBMISSION.md`](docs/ROUND3_SUBMISSION.md)  
+**Round 3 Official Product PDF:** [`docs/Proofline_Round3_Submission.pdf`](docs/Proofline_Round3_Submission.pdf)  
+**Execution Evidence:** [`docs/EVIDENCE.md`](docs/EVIDENCE.md)  
 **Core Thesis:** *"Every important content claim must be traceable to an approved source, every policy violation must be explainable, every approval must be bound to an exact document version, and every release must be independently verifiable."*
 
 ---
 
-## 1. Executive Summary & Problem Solved
+## 1. Delivered Round 3 Improvements
 
-Modern enterprises face an acute governance crisis: generative AI models produce highly persuasive, subtly inaccurate claims about product specifications, uptime SLAs, medical indications, pricing, and regulatory certifications. Generic LLM "evaluators" merely generate subjective percentage scores without verifiable proof.
-
-**Proofline 2.0** solves this with an **evidence-first, verifiable AI governance platform**:
-1. **Deconstructs text into atomic testable claims** (specs, SLA thresholds, certifications, pricing, superlatives).
-2. **Grounds claims against authoritative, versioned source passages** using hybrid BM25 + trust-weighted retrieval.
-3. **Applies deterministic policy boundaries** (numerical thresholds, active certificate expiration dates, prohibited superlatives).
-4. **Enforces four-eyes separation of duties & dual-reviewer quorum** (authors cannot approve their own releases; high-risk copy mandates 2 distinct sign-offs).
-5. **Issues Ed25519 Cryptographic Release Passports** that detect any post-approval bitwise or single-character tampering.
-6. **Maintains an automatic evidence lifecycle re-review queue** and an append-only SHA-256 hash-chained compliance ledger.
-
----
-
-## 2. Round 3 Flagship Improvements Delivered
-
-Measured directly against the three improvements committed at Round 2 (`docs/ROUND2_SUBMISSION.md` / `ROUND3_SPEC.md`):
+Proofline delivers the three frozen improvements committed at Round 2 in exact order:
 
 1. **Cascade re-review with ownership (Q1):**
    - **Definition:** When an approved source, rule or fact changes, expires or conflicts, Proofline creates one owned, tracked re-review task per affected document and follows it until closure.
    - **Phase A (Task Pipeline):** 7 atomic hook points inside `mutate` closures (source activated/retired, rule edited/deactivated, fact expired, approval revoked, visual stale). Creates deduplicated tasks assigned to document creator with due dates and SLA tracking. Closes automatically on re-approval (`closedByReapproval: True`) or manual justification (`≥ 8 chars`). In-app notification pipeline (`/api/notifications`; explicitly in-app only, no email/Slack claims).
-   - **Phase B (Per-Document Storage & Scalability):** Document storage gateway `Documents` (`backend/store.py`) with optimistic CAS locking and library-scale state pagination (`GET /api/state?documents=page|none|all` with 50 per page + nextCursor).
+   - **Phase B (Per-Document Storage & Scalability):** Document storage gateway `Documents` (`backend/store.py`) with optimistic CAS locking and library-scale state pagination (`GET /api/state?documents=page|none|all` with 50 per page + nextCursor). Verified with 5,000 seeded documents in `scripts/scale_proof.py`.
    - **Test Evidence:** All 11 acceptance tests passing in `tests/test_round3_tasks.py` and verified in `scripts/smoke.py` Step 10.
 
 2. **Benchmarked detection quality, enforced in CI (Q2):**
-   - **Definition:** A frozen, human-labelled benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
-   - **Frozen Dataset & Manifest:** Exactly 30 human-labelled items in `benchmark/dataset.v1.jsonl` with category quotas (tone 4, unsupported claims 5, terminology 4, valid true-negatives 6, ambiguous 4, conflicting 4, malformed 3). Manifest with SHA-256 integrity hash (`213862facd9243dd3f7f50b3f4f0484e54a8c0c3b89fce873816be957255b093`) and Cohen's kappa (0.88).
-   - **Evaluator & CI Gate:** Evaluator CLI (`scripts/eval_quality.py --offline|--live`) checks 12 quality gates (rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, zero quote hallucination tolerance). Regression gate (max 0.02 drop) and SHA verification enforced in GitHub Actions (`.github/workflows/quality.yml`).
-   - **Test Evidence:** All 7 acceptance tests passing in `tests/test_round3_quality.py` and `scripts/eval_quality.py --offline` passing all 12 gates.
+   - **Definition:** A frozen benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
+   - **Frozen Dataset & Manifest:** Exactly 30 items in `benchmark/dataset.v1.jsonl` with category quotas (tone 4, unsupported claims 5, terminology 4, valid true-negatives 6, ambiguous 4, conflicting 4, malformed 3). Manifest with SHA-256 integrity hash (`c5908dfc8ce6616fb01baf8de6bb0c48828ff28601f8383c1feafdb8a08dffdc`). Provenance: labelled by the team; inter-annotator agreement not measured.
+   - **Evaluator & CI Gate:** Evaluator CLI (`scripts/eval_quality.py --offline|--live`) checks 12 quality gates (rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, zero quote hallucination tolerance). Offline AI result honestly reported as *"AI layer: offline fixture replay (authored replies, not a model measurement)"*. Regression gate (max 0.02 drop) and SHA verification enforced in GitHub Actions (`.github/workflows/quality.yml`).
+   - **Test Evidence:** All 8 acceptance tests passing in `tests/test_round3_quality.py` and `scripts/eval_quality.py --offline` passing all 12 gates (on the 30-item team-labelled set, rules layer: 100% precision, 95.8% recall, offline).
 
 3. **Multi-reviewer approval policy (Q3):**
    - **Definition:** Approval policy enforces required reviewer counts and eligible roles per channel and risk tier, supports explicit approval revocation, and gates exports server-side until all distinct signatures are obtained.
-   - **Quorum & Separation of Duties:** Seeded policy (`state['approvalPolicy']`) with channel overrides (`website: 2`, `press_release: 2`, `email: 1`) and severity overrides (`high: 2`). Author self-approval prohibited (403), same reviewer twice rejected (403/409), distinct reviewer signatures tracked.
+   - **Quorum & Separation of Duties:** Seeded policy (`state['approvalPolicy']`) with channel overrides (`website: 2`, `press_release: 2`, `email: 1`) and severity overrides (`high: 2`). Author self-approval prohibited (403), same reviewer twice rejected (403/409), distinct reviewer signatures tracked. Partial signatures invalidated on policy version change.
    - **Explicit Revocation & Manager Exceptions:** `POST /api/documents/{did}/revoke` requires ≥ 8 chars justification and cascades tasks. Time-bounded manager exceptions (`/api/exceptions`) deduct needed signatures. Strict server-side export gate produces Ed25519 signed receipts listing all signers and policy version.
-   - **Test Evidence:** All 10 acceptance tests passing in `tests/test_round3_quorum.py` and verified in `scripts/smoke.py` Steps 5, 6, 7, 9, 10.
+   - **Test Evidence:** All 10 acceptance tests passing in `tests/test_round3_quorum.py`, table-driven matrix in `tests/test_quorum_matrix.py` (10/10 passing), and verified in `scripts/smoke.py` Steps 5, 6, 7, 9, 10.
+
+---
+
+## 2. Additional Capabilities (outside the three Round 3 improvements)
+
+To provide end-to-end governance, Proofline includes additional capabilities outside the three frozen improvements:
+
+1. **Deterministic Pipeline Stages (Stages A–G):**
+   - Implemented as deterministic Python pipeline stages (no language-model agents):
+     * Stage A: Text ingestion & structural claim extraction
+     * Stage B: Evidence candidate retrieval (hybrid BM25 + trust weighting)
+     * Stage C: Exact-quote validation & boundary checking
+     * Stage D: Deterministic policy evaluation (regex whole-word matching, numeric ranges, date expiration; optional external LLM adapter if API key provided)
+     * Stage E: Suggested compliant rewrite generation
+     * Stage F: Multi-format document exporter
+     * Stage G: Audit ledger entry creator
+   - Optional contextual AI review (Gemini / OpenAI) can be enabled by supplying provider credentials in dashboard environment variables for semantic nuance; when unconfigured, the deterministic pipeline operates fully offline.
+
+2. **Ed25519 Cryptographic Release Receipts:**
+   - **Integrity vs Signature Distinction:** The canonical SHA-256 fingerprint guarantees document *content integrity* (detecting even a 1-character modification). The Ed25519 signature guarantees *server cryptographic authorization* using an RFC 8032 signing key.
+   - **Public Key Endpoint:** The server's active Ed25519 public key hex is publicly exported via `GET /api/public-key`.
+   - **Key Rotation Handling:** If the signing key is rotated or replaced, signatures verify only against the key that signed them. The verification engine explicitly surfaces `signatureStatus: "signature unverifiable: key rotated"` rather than crashing or silently regenerating.
+
+3. **Append-Only SHA-256 Compliance Ledger:**
+   - Sequential block hashing ($\text{Hash}_n = \text{SHA-256}(\text{Seq} \parallel \text{Action} \parallel \text{Actor} \parallel \text{PrevHash})$) providing mathematical proof of chronological audit integrity.
 
 ---
 
@@ -57,12 +68,12 @@ Measured directly against the three improvements committed at Round 2 (`docs/ROU
 ### The Pitch
 > *"Judges, when an enterprise releases an AI-generated compliance filing or marketing asset, they cannot rely on an LLM saying 'I am 95% confident.' If an uptime claim says 99.99% but the audited SLA is 99.9%, or an ISO certificate expired two months ago, that is a legal liability.
 > 
-> Proofline 2.0 is an autonomous evidence intelligence platform. It segments claims, retrieves exact source passages, runs deterministic policy rules, enforces human separation of duties and dual-quorum approvals, and produces an Ed25519-signed release passport. If anyone modifies even a single word after approval, the cryptographic passport immediately flags the tampering. Let me show you in 90 seconds."*
+> Proofline is a content governance and source-bound approval system. It segments claims, retrieves exact source passages, runs deterministic policy rules, enforces human separation of duties and multi-reviewer quorum approvals, and produces an Ed25519-signed release receipt. If anyone modifies even a single word after approval, the system immediately flags the tampering. Let me show you in 90 seconds."*
 
 ### Live Demo Walkthrough (9-Step Sequence)
 
 1. **Dashboard & Overview (`/overview`)**:
-   - Point out real-time governance metrics and the **Proofline 2.0 Innovations Deck**.
+   - Point out real-time governance metrics and the **Delivered Improvements** cards.
    - Note the **Demo Mode** indicator with the one-click **"Reset Demo"** button.
 
 2. **Ingest & Document Review (`/documents` & `/editor`)**:
@@ -83,7 +94,7 @@ Measured directly against the three improvements committed at Round 2 (`docs/ROU
 5. **Approval Center & Quorum (`/approvals`)**:
    - As an Author (`creator`), attempt to approve: server returns HTTP 403 `SELF_APPROVAL_BLOCKED`.
    - In persona switcher, switch to **Reviewer**. Reviewer approves Revision 2.
-   - If marked for Public Press Release, dual-quorum enforces a second reviewer signature before release.
+   - For Public Press Release, dual-quorum enforces a second reviewer signature before release.
    - View the **Re-Review Queue** tab for automated tasks triggered by evidence retirement.
 
 6. **Cryptographic Release Passport & Bitwise Tamper Simulator (`/verification`)**:
@@ -95,19 +106,19 @@ Measured directly against the three improvements committed at Round 2 (`docs/ROU
    - Inspect the append-only ledger with sequential block hashes: $\text{Hash}_n = \text{SHA-256}(\text{Seq} \parallel \text{Action} \parallel \text{Actor} \parallel \text{PrevHash})$.
    - Click **"Verify Chain Integrity"**: recomputes from Genesis to Head with mathematical proof of zero tampering.
 
-8. **Adversarial Security Lab (`/benchmark`)**:
-   - Click **"Run Adversarial Benchmark"**: Executes all 30 ground truth test cases, demonstrating 100% precision, 100% recall, and zero false positives.
+8. **Benchmark Lab (`/benchmark`)**:
+   - Click **"Run Benchmark"**: Executes all 30 ground truth test cases, demonstrating on the 30-item team-labelled set, rules layer: 100% precision, 95.8% recall, and zero false positives (offline), with offline AI fixture replay.
 
 ---
 
 ## 4. Test Results & Build Status
 
-- **Pytest Suite:** `python -m pytest tests/ -v`
-  - **128 passed in 34.74s** (100% clean test execution across `test_core.py`, `test_upgrades.py`, `test_round3_improvements.py`, `test_round3_quality.py`, `test_round3_quorum.py`, and `test_round3_tasks.py`).
+- **Pytest Suite:** `python -m pytest tests/ -q`
+  - **147 passed in 22.07s** (100% clean test execution across all 10 test suites: `test_core.py`, `test_upgrades.py`, `test_round3_improvements.py`, `test_round3_quality.py`, `test_round3_quorum.py`, `test_round3_tasks.py`, `test_numeric_probes.py`, `test_crypto_rotation.py`, and `test_quorum_matrix.py`).
 - **Benchmarked Quality Evaluator:** `python scripts/eval_quality.py --offline`
-  - **12/12 gates passed** across deterministic rules and AI detection layers.
+  - **12/12 gates passed** across deterministic rules and offline AI fixture replay.
 - **Next.js Production Build:** `npm --prefix frontend run build`
-  - **Compiled clean in 6.8s** with 0 errors across all static & dynamic app routes.
+  - **Compiled clean in 3.8s** with 0 errors across all static & dynamic app routes.
 - **End-to-End Governance Smoke Test:** `python scripts/smoke.py`
   - **All 10 steps verified**: Demo Init -> Review -> Suggestion -> Submit -> Author Block (403) -> Reviewer 1 Approve (200) -> Reviewer 2 Approve (Quorum) -> Export (200) -> Edit (200) -> Export Blocked (409) -> Cascade Trigger -> Re-review Tasks -> Quorum Re-Approval -> Task Closes (closedByReapproval: True).
 
@@ -139,7 +150,7 @@ Open `http://localhost:3000` in your browser.
 
 ### Run Automated Tests
 ```bash
-# Run all 128 unit, cryptographic, quorum, and cascade tests
+# Run all 147 unit, cryptographic, quorum, and cascade tests
 python -m pytest -q
 
 # Run benchmarked detection quality evaluation
@@ -155,18 +166,19 @@ python scripts/smoke.py http://127.0.0.1:8000
 
 ```
 ├── .github/workflows/
-│   └── quality.yml             # CI quality evaluation workflow (SHA check + gates)
+│   ├── ci.yml                  # Automated CI test suite & quality evaluation
+│   └── quality.yml             # Quality evaluation workflow (SHA check + gates)
 ├── backend/
-│   ├── crypto_passport.py      # Ed25519 signing, verification & single-char tamper detection
+│   ├── crypto_passport.py      # Ed25519 signing, verification & key rotation handling
 │   ├── ingestion.py            # Multi-format ingestion (PDF, DOCX, CSV, safe URL crawl)
-│   ├── agents_pipeline.py      # Multi-agent verification pipeline & impact cascade
+│   ├── agents_pipeline.py      # Deterministic pipeline stages (Stages A-G) & impact cascade
 │   ├── engine.py               # Pure domain logic: rules, quorum, cascade tasks, fingerprints
 │   ├── main.py                 # FastAPI REST API endpoints, session handling & rate limiting
 │   ├── store.py                # Documents gateway, SQLite WAL & Supabase CAS store
 │   └── requirements.txt        # Backend dependencies
 ├── benchmark/
-│   ├── dataset.v1.jsonl        # Frozen 30-item human-labelled ground-truth benchmark
-│   ├── manifest.json           # SHA-256 integrity hash & Cohen's kappa
+│   ├── dataset.v1.jsonl        # Frozen 30-item benchmark dataset (labelled by the team)
+│   ├── manifest.json           # SHA-256 integrity hash & provenance metadata
 │   ├── gates.json              # Quality gate thresholds (precision, recall, FPR, quote validity)
 │   └── model_fixtures.json     # Offline deterministic AI evaluation fixtures
 ├── frontend/
@@ -186,24 +198,32 @@ python scripts/smoke.py http://127.0.0.1:8000
 ├── tests/
 │   ├── conftest.py                 # Offline guard (clears provider API keys)
 │   ├── test_round3_tasks.py        # Q1 Cascade re-review acceptance tests (11 tests)
-│   ├── test_round3_quality.py      # Q2 Benchmarked detection quality acceptance tests (7 tests)
+│   ├── test_round3_quality.py      # Q2 Benchmarked detection quality acceptance tests (8 tests)
 │   ├── test_round3_quorum.py       # Q3 Multi-reviewer approval policy acceptance tests (10 tests)
-│   ├── test_round3_improvements.py # Round 3 improvements integration tests
-│   ├── test_upgrades.py            # Invariants, boundary checks, bearer tokens & CAS mutations
-│   └── test_core.py                # Core journeys, separation of duties & WCAG contrast
+│   ├── test_quorum_matrix.py       # Q3 Table-driven quorum matrix acceptance tests (10 tests)
+│   ├── test_crypto_rotation.py     # Ed25519 key rotation & public key acceptance tests (4 tests)
+│   ├── test_numeric_probes.py      # Number boundary & false positive prevention tests (4 tests)
+│   ├── test_round3_improvements.py # Round 3 improvements integration tests (4 tests)
+│   ├── test_upgrades.py            # Invariants, boundary checks, bearer tokens & CAS mutations (51 tests)
+│   ├── test_proofline2.py          # Cryptographic passport & ledger tests (9 tests)
+│   └── test_core.py                # Core journeys, separation of duties & WCAG contrast (36 tests)
 ├── docs/
 │   ├── ROUND3_SUBMISSION.md        # Official Round 3 submission deck & technical audit report
-│   ├── Proofline_2.0_Final_Product_Submission.pdf # Official generated product PDF
+│   ├── EVIDENCE.md                 # Real pasted command execution logs, dates, and commit hashes
+│   ├── ANNOTATION_GUIDE.md         # Protocol for independent dual human annotation
+│   ├── Proofline_Round3_Submission.pdf # Official generated product PDF
 │   └── ARCHITECTURE.md             # Detailed technical architecture specification
 ├── scripts/
-│   ├── smoke.py                    # 10-step end-to-end governance smoke test
+│   ├── smoke.py                    # 10-step end-to-end governance smoke test with cold start retry
+│   ├── scale_proof.py              # 5,000 document seeding & cascade scalability benchmark
 │   ├── eval_quality.py             # Evaluation benchmark runner (offline & live)
+│   ├── compute_agreement.py        # Cohen's kappa dual-annotator agreement calculator
 │   ├── build_dataset.py            # Dataset compiler & schema validator
 │   ├── build_fixtures.py           # Offline model fixture generator
+│   ├── package_for_submission.sh   # Clean submission zip packager (excludes .env, sqlite, etc.)
 │   └── generate_product_pdf.py     # ReportLab script to build the official submission PDF
 ├── pyproject.toml                  # Pytest configuration with pythonpath
 └── README.md                       # This documentation
-```
 
 ---
 
@@ -211,4 +231,4 @@ python scripts/smoke.py http://127.0.0.1:8000
 
 1. **Cryptographic Identity**: Ed25519 signatures authenticate that a release was approved by an authorized server key. It does not replace legal certification audits.
 2. **Audit Hash Chaining**: SHA-256 preimage chaining exposes unauthorized modification or deletion relative to a trusted checkpoint.
-3. **AI Boundaries**: LLMs are used exclusively for claim segmentation and semantic interpretation; all mathematical thresholds, SLA matching, and approval transitions are enforced strictly in deterministic Python code.
+3. **AI Boundaries**: LLMs are used exclusively for optional claim segmentation and semantic interpretation; all mathematical thresholds, SLA matching, and approval transitions are enforced strictly in deterministic Python code.

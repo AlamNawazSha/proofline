@@ -25,16 +25,16 @@ Render hosts the REST API backend as a persistent Web Service.
   ```
 - **Health Check Path**: `/api/health`
 
-### Environment Variables
-| Variable | Required | Description | Example |
+### Environment Variables (Render Dashboard — Set in dashboard only)
+| Variable | Required | Description | Example / Note |
 | :--- | :--- | :--- | :--- |
-| `SESSION_SECRET` | **Required in production** | 32-byte secret key for signed session cookies and bearer tokens (server crashes with `RuntimeError` if missing when `APP_ENV=production`) | `openssl rand -hex 32` |
-| `APP_ENV` | Recommended | Environment mode (`production` enables `Secure` cookies and requires `SESSION_SECRET`) | `production` |
-| `CORS_ORIGIN` | Recommended | Allowed frontend origin for cross-origin credentials | `https://proofline.vercel.app` |
-| `OPENAI_API_KEY` | Optional | Live OpenAI API key for semantic verification (unverified in demo) | `sk-...` |
-| `OPENAI_BASE_URL` | Optional | Custom OpenAI-compatible base URL (e.g. Gemini or Ollama endpoints) | `https://generativelanguage.googleapis.com/v1beta/openai` |
-| `SUPABASE_URL` | Optional | Supabase project URL for hosted PostgreSQL store | `https://xyz.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Optional | Supabase service role secret for server-side persistence | `eyJ...` |
+| `SESSION_SECRET` | **REQUIRED** | 32-byte secret key for signed session cookies and bearer tokens (server crashes with `RuntimeError` if missing when `APP_ENV=production`) | Set in dashboard only (`openssl rand -hex 32`) |
+| `APP_ENV` | **REQUIRED** | Set to `production` (enforces `Secure` cookies and requires `SESSION_SECRET`) | Set in dashboard only (`production`) |
+| `CORS_ORIGIN` | Optional | Allowed frontend origin for cross-origin credentials | Set in dashboard only (`https://proofline-ruby-three.vercel.app`) |
+| `OPENAI_API_KEY` | Optional | Live OpenAI API key for semantic verification (unverified in demo unless provided) | Set in dashboard only (`sk-...`) |
+| `OPENAI_BASE_URL` | Optional | Custom OpenAI-compatible base URL (e.g. Gemini or Ollama endpoints) | Set in dashboard only (`https://generativelanguage.googleapis.com/v1beta/openai`) |
+| `SUPABASE_URL` | Optional | Supabase project URL for hosted PostgreSQL store | Set in dashboard only (`https://xyz.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional | Supabase service role secret for server-side persistence | Set in dashboard only (`eyJ...`) |
 
 ---
 
@@ -49,10 +49,10 @@ Vercel hosts the responsive Next.js application, proxying API requests to the Re
 - **Output Directory**: `.next`
 - **Install Command**: `npm install`
 
-### Environment Variables
-| Variable | Required | Description | Example |
+### Environment Variables (Vercel Dashboard — Set in dashboard only)
+| Variable | Required | Description | Example / Note |
 | :--- | :--- | :--- | :--- |
-| `API_INTERNAL_URL` | **Yes** | Public or internal URL of the deployed Render backend | `https://proofline-api.onrender.com` |
+| `API_INTERNAL_URL` | **REQUIRED** | Public HTTPS URL of the deployed Render backend | Set in dashboard only (`https://proofline-api.onrender.com`) |
 
 *Note: `frontend/next.config.mjs` automatically rewrites all `/api/:path*` traffic to `${process.env.API_INTERNAL_URL || 'http://127.0.0.1:8000'}/api/:path*`.*
 
@@ -63,7 +63,7 @@ Vercel hosts the responsive Next.js application, proxying API requests to the Re
 Once live URLs are provisioned, run the automated verification script against the live base URL:
 
 ```bash
-python scripts/smoke.py https://proofline.vercel.app
+python scripts/smoke.py https://proofline-ruby-three.vercel.app
 ```
 
 > [!IMPORTANT]

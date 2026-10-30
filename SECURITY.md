@@ -1,4 +1,4 @@
-# Proofline 2.0 — Security Policy & Threat Model
+# Proofline (v0.2.0) — Security Policy & Threat Model
 
 > **Enterprise Content Governance, Cryptographic Invariants & Vulnerability Disclosure**
 
@@ -6,7 +6,7 @@
 
 ## 1. Security Philosophy: Fail-Closed & Evidence-First
 
-Proofline 2.0 is designed under the principle that **unverified claims are risks, and safety cannot be assumed**. The platform treats external LLM suggestions as untrusted user input, requires deterministic boundary enforcement in native code, and enforces cryptographic tamper detection on all release artifacts.
+Proofline is designed under the principle that **unverified claims are risks, and safety cannot be assumed**. The platform treats external LLM suggestions as untrusted user input, requires deterministic boundary enforcement in native code, and enforces cryptographic tamper detection on all release artifacts.
 
 ---
 

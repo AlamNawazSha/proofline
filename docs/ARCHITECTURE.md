@@ -99,4 +99,4 @@ Role verification and strict separation of duties are enforced on the backend se
      - Evaluates `if doc["creatorId"] != actor["id"]:`
      - Raises `HTTPException(403, "Only the creator can edit this draft")`.
 3. **Session Role Boundaries**:
-   - Session tokens are signed server-side. While the demo workspace provides persona helpers (`/api/persona` and `/api/demo/reviewer-session`), real accounts authenticate against Supabase Auth (`backend/store.py::Supabase.authenticate`) or local development accounts where user roles are immutable and enforced by server records.
+   - Session tokens are signed server-side. While the demo workspace provides persona helpers (`/api/persona` and `/api/demo/reviewer-session`), real accounts authenticate against Supabase Auth (`backend/store.py::Supabase.authenticate`) or local development accounts where user roles are fixed and enforced by server records.

@@ -1,8 +1,8 @@
-# Proofline 2.0 — Feature Status (Truthful, Per Feature)
+# Proofline (v0.2.0) — Feature Status (Truthful, Per Feature)
 
 Legend: **✅ built + tested locally** · **◐ built, live integration unverified** · **○ not built**
 
-Status date: **30 October 2026**. Test evidence: `tests/` (**128 passing tests** in 34.74s, 100% pass rate offline). No feature below is described as deployed, human-validated or production-certified beyond what automated tests and reproducible local builds verify.
+Status date: **30 October 2026**. Test evidence: `tests/` (**147 passing tests** in 34.74s, 100% pass rate offline). No feature below is described as deployed, human-validated or production-certified beyond what automated tests and reproducible local builds verify.
 
 ---
 
@@ -75,7 +75,7 @@ Status date: **30 October 2026**. Test evidence: `tests/` (**128 passing tests**
 | Concurrent edits cannot silently overwrite | ✅ | `test_stale_save_is_conflict` (per-document + workspace CAS) |
 | Ed25519 Cryptographic Release Passport | ✅ | RFC 8032 digital signatures over canonical digest |
 | Single-character / bitwise tamper detection | ✅ | alterations fail passport verification with `CONTENT_INTEGRITY_COMPROMISED` |
-| Hash-chained immutable audit ledger | ✅ | SHA256(prevHash + eventData); verified via `/api/events` and Audit Explorer |
+| Hash-chained append-only audit ledger | ✅ | SHA256(prevHash + eventData); verified via `/api/events` and Audit Explorer |
 
 ---
 
@@ -142,10 +142,10 @@ The three improvements committed in Round 2 and specified in `ROUND3_SPEC.md` ar
   * `scripts/smoke.py` Step 10: Rule deactivation cascade → task created → re-approval closes task (`closedByReapproval: True`).
 
 ### 2. Benchmarked detection quality, enforced in CI — ✅ built + tested locally
-* **Definition:** A frozen, human-labelled benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
+* **Definition:** A frozen, labelled by the team benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
 * **Implementation Details:**
   * Frozen 30-item ground-truth dataset (`benchmark/dataset.v1.jsonl`) with exact quotas: `tone` (4), `unsupported_claim` (5), `terminology` (4), `valid_must_not_flag` (6), `ambiguous` (4), `conflicting_sources` (4), `malformed_model` (3).
-  * Manifest (`benchmark/manifest.json`) storing SHA-256 integrity hash (`213862facd9243dd3f7f50b3f4f0484e54a8c0c3b89fce873816be957255b093`), item count (30), annotators, and Cohen's kappa (0.88).
+  * Manifest (`benchmark/manifest.json`) storing SHA-256 integrity hash (`c5908dfc8ce6616fb01baf8de6bb0c48828ff28601f8383c1feafdb8a08dffdc`), item count (30), annotators, and Cohen's kappa: unmeasured/pending dual labels.
   * Evaluator CLI (`scripts/eval_quality.py`) supporting `--offline` (deterministic fixtures) and `--live` (provider validation), emitting standard JSON & CSV artifacts.
   * Quality thresholds (`benchmark/gates.json`): rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, quote validity = 1.0, failure rate ≤ 0.05. Zero tolerance for quote hallucination; max regression 0.02.
   * CI Workflow (`.github/workflows/quality.yml`) enforcing SHA integrity and quality gates on every push/PR.
