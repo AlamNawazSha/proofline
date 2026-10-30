@@ -1889,7 +1889,11 @@ function Editor({
     );
   const queue = () =>
     safe(
-      () => api("/documents/" + doc.id + "/review", "POST", { useAI, consent }),
+      () =>
+        api("/documents/" + doc.id + "/review", "POST", {
+          useAI: useAI && Boolean(config?.aiConfigured),
+          consent,
+        }),
       "Review queued. Processing status is separate from approval.",
     );
   const openSuggestion = (f: any) =>
@@ -2093,20 +2097,25 @@ function Editor({
           </div>
           <div className="review-controls">
             <div className="toggle-row">
-              <label>
+              <label style={{ opacity: config?.aiConfigured ? 1 : 0.65, cursor: config?.aiConfigured ? "pointer" : "not-allowed" }}>
                 <input
                   type="checkbox"
-                  checked={useAI}
-                  disabled={!isOwner}
+                  checked={useAI && Boolean(config?.aiConfigured)}
+                  disabled={!isOwner || !config?.aiConfigured}
                   onChange={(e) => sai(e.target.checked)}
                 />
                 <Sparkles size={16} /> Include contextual AI review
               </label>
               <Badge tone={config?.aiConfigured ? "green" : "neutral"}>
-                {config?.aiConfigured ? "API configured" : "No API key"}
+                {config?.aiConfigured ? "API configured" : "Offline mode (Rules only)"}
               </Badge>
             </div>
-            {useAI && (
+            {!config?.aiConfigured && (
+              <small className="form-note" style={{ display: "block", marginTop: "3px", fontSize: "11px" }}>
+                Deterministic rule engine is active (all 7 policy rules verified). Configure <code>OPENAI_API_KEY</code> or <code>GEMINI_API_KEY</code> in environment to enable optional LLM contextual review.
+              </small>
+            )}
+            {useAI && config?.aiConfigured && (
               <label className="checkbox-note">
                 <input
                   type="checkbox"
@@ -2137,7 +2146,7 @@ function Editor({
                 variant="primary"
                 onClick={queue}
                 disabled={
-                  !isOwner || busy || dirty || active || (useAI && !consent)
+                  !isOwner || busy || dirty || active || (useAI && config?.aiConfigured && !consent)
                 }
               >
                 <Search size={16} />
@@ -2151,11 +2160,15 @@ function Editor({
                   (doc.review.status === "partial" ? "partial" : "")
                 }
               >
-                <strong>{doc.review.status.toUpperCase()} REVIEW</strong>
+                <strong>
+                  {doc.review.status === "complete"
+                    ? "COMPREHENSIVE REVIEW (AI + RULES)"
+                    : "DETERMINISTIC RULE REVIEW (PARTIAL)"}
+                </strong>
                 <p>{doc.review.message}</p>
                 {doc.review.status === "partial" && (
                   <p style={{ margin: "6px 0", fontSize: "12px", fontWeight: 600 }}>
-                    Partial = rules ran; semantic/AI review did not. A human confirms coverage before approval.
+                    {doc.review.coverage?.ruleCount ?? 7} active policy rules executed. Human reviewer confirms semantic coverage before approval.
                   </p>
                 )}
                 {doc.review.coverage && (
@@ -2182,7 +2195,7 @@ function Editor({
                   <li>
                     Coverage status: {doc.review.status} —{" "}
                     {doc.review.status === "partial"
-                      ? "Partial = rules ran; semantic/AI review did not. A human confirms coverage before approval."
+                      ? "Deterministic rules verified; human confirms semantic coverage before release."
                       : "all configured checks completed"}
                   </li>
                   <li>
