@@ -136,7 +136,7 @@ Route (app)                                 Size  First Load JS
 
 ### 3.2 Q2 Benchmarked Quality Tests (`tests/test_round3_quality.py`)
 1. `test_dataset_has_thirty_items_and_valid_schema`: Validates 30 items and all 7 category quotas.
-2. `test_dataset_sha_matches_manifest`: Validates dataset SHA-256 against manifest `c5908dfc8c9243dd...`.
+2. `test_dataset_sha_matches_manifest`: Validates dataset SHA-256 against manifest `a04126be14364647...`.
 3. `test_no_item_is_derived_from_engine_output`: Asserts human ground truth independence from model predictions.
 4. `test_metrics_match_reference_counts`: Asserts TP, FP, FN, TN, precision, recall formulas.
 5. `test_gate_fails_on_quote_hallucination`: Asserts gate failure if any hallucinated quote is produced.

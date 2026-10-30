@@ -368,7 +368,7 @@ items = [
         "sources": [SOURCE_BRAND],
         "expectedFindings": [{"category": "malformed_model", "quote": "instant failover"}],
         "mustNotFlag": [],
-        "notes": "Human label: Model generates empty or non-compliant category taxonomy.",
+        "notes": "Team label: Model generates empty or non-compliant category taxonomy.",
         "provenance": "team_labelled"
     }
 ]
@@ -379,9 +379,9 @@ with open(dataset_path, "w", encoding="utf-8", newline="\n") as f:
     for item in items:
         f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
-# Calculate SHA256
+# Calculate SHA256 with cross-platform LF line ending normalization
 with open(dataset_path, "rb") as f:
-    sha256 = hashlib.sha256(f.read()).hexdigest()
+    sha256 = hashlib.sha256(f.read().replace(b"\r\n", b"\n")).hexdigest()
 
 manifest = {
     "version": 1,

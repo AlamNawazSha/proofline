@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Added 11 acceptance tests in `tests/test_round3_tasks.py`.
 - **Q2: Benchmarked Detection Quality, Enforced in CI**:
   - Created frozen 30-item human-ground-truth dataset (`benchmark/dataset.v1.jsonl`) with category quotas: `tone` (4), `unsupported_claim` (5), `terminology` (4), `valid_must_not_flag` (6), `ambiguous` (4), `conflicting_sources` (4), `malformed_model` (3).
-  - Created manifest (`benchmark/manifest.json`) storing SHA-256 integrity hash (`c5908dfc8c9243dd...`) and Cohen's kappa: unmeasured/pending dual labels.
+  - Created manifest (`benchmark/manifest.json`) storing SHA-256 integrity hash (`a04126be14364647...`) and Cohen's kappa: unmeasured/pending dual labels.
   - Built evaluator CLI (`scripts/eval_quality.py`) supporting `--offline` (deterministic fixtures) and `--live` (Gemini 2.5 Flash).
   - Defined quality gates (`benchmark/gates.json`): rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, zero quote hallucination tolerance, and max regression 0.02.
   - Added GitHub Actions CI workflow (`.github/workflows/quality.yml`) failing builds on hash mismatch, quote hallucination, or regression.

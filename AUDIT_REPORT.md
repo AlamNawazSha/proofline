@@ -44,7 +44,7 @@ Proofline enforces a clean separation of storage:
 * **Status**: Complete & Verified (7/7 tests passing in `tests/test_round3_quality.py`).
 * **Implementation**:
   - Frozen 30-item human-ground-truth dataset (`benchmark/dataset.v1.jsonl`) satisfying exact category quotas.
-  - Manifest (`benchmark/manifest.json`) verifying SHA-256 hash `c5908dfc8ce6616fb01baf8de6bb0c48828ff28601f8383c1feafdb8a08dffdc` and inter-annotator agreement Cohen's kappa: unmeasured/pending dual labels.
+  - Manifest (`benchmark/manifest.json`) verifying SHA-256 hash `a04126be14364647a72279502535b7294660ca74b7fbed49a09ae9ec1c8866bf` and inter-annotator agreement Cohen's kappa: unmeasured/pending dual labels.
   - Evaluator CLI (`scripts/eval_quality.py`) enforcing 12 quality gates offline: rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, zero quote hallucination tolerance, and max regression 0.02.
   - Continuous integration via GitHub Actions (`.github/workflows/quality.yml` and `.github/workflows/ci.yml`).
 

@@ -1,6 +1,10 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
+# Benchmark files must always have LF line endings across all operating systems
+benchmark/*.jsonl text eol=lf
+benchmark/*.json text eol=lf
+
 # Binary files - prevent CRLF corruption
 *.pdf binary
 *.png binary

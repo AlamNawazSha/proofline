@@ -64,7 +64,7 @@ Benchmark run complete: overall=pass
 ```
 
 **Quality Status:** 12 of 12 quality gates passed.
-- Dataset SHA-256: `c5908dfc8ce6616fb01baf8de6bb0c48828ff28601f8383c1feafdb8a08dffdc` (30 items).
+- Dataset SHA-256: `a04126be14364647a72279502535b7294660ca74b7fbed49a09ae9ec1c8866bf` (30 items).
 - Provenance: Labelled by the team; inter-annotator agreement not measured pending dual annotation.
 - AI layer: Offline fixture replay (authored replies, not a live model measurement).
 

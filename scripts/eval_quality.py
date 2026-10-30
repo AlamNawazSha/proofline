@@ -25,7 +25,9 @@ from backend import engine as e
 
 def compute_sha256(path: str) -> str:
     with open(path, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()
+        # Cross-platform LF line ending normalization
+        content = f.read().replace(b"\r\n", b"\n")
+        return hashlib.sha256(content).hexdigest()
 
 
 def percentile(data: List[float], p: float) -> float:

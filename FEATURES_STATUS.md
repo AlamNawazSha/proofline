@@ -145,7 +145,7 @@ The three improvements committed in Round 2 and specified in `ROUND3_SPEC.md` ar
 * **Definition:** A frozen, labelled by the team benchmark set publishes precision, recall, false-positive rate, quote validity, latency and failure rate per detection layer (deterministic rules vs AI), and a regression fails the CI build.
 * **Implementation Details:**
   * Frozen 30-item ground-truth dataset (`benchmark/dataset.v1.jsonl`) with exact quotas: `tone` (4), `unsupported_claim` (5), `terminology` (4), `valid_must_not_flag` (6), `ambiguous` (4), `conflicting_sources` (4), `malformed_model` (3).
-  * Manifest (`benchmark/manifest.json`) storing SHA-256 integrity hash (`c5908dfc8ce6616fb01baf8de6bb0c48828ff28601f8383c1feafdb8a08dffdc`), item count (30), annotators, and Cohen's kappa: unmeasured/pending dual labels.
+  * Manifest (`benchmark/manifest.json`) storing SHA-256 integrity hash (`a04126be14364647a72279502535b7294660ca74b7fbed49a09ae9ec1c8866bf`), item count (30), annotators, and Cohen's kappa: unmeasured/pending dual labels.
   * Evaluator CLI (`scripts/eval_quality.py`) supporting `--offline` (deterministic fixtures) and `--live` (provider validation), emitting standard JSON & CSV artifacts.
   * Quality thresholds (`benchmark/gates.json`): rules precision ≥ 0.95, recall ≥ 0.90, quote validity = 1.0; AI precision ≥ 0.80, recall ≥ 0.75, FPR ≤ 0.15, quote validity = 1.0, failure rate ≤ 0.05. Zero tolerance for quote hallucination; max regression 0.02.
   * CI Workflow (`.github/workflows/quality.yml`) enforcing SHA integrity and quality gates on every push/PR.
