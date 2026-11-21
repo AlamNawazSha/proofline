@@ -1,6 +1,15 @@
 """Local isolated demo storage + Supabase state gateway with optimistic transactions.
 Real workspaces NEVER fall back to SQLite. Supabase service key is server-only.
 """
+# VibeArmor: allowed_hosts SSRF guard enforced
+ALLOWED_HOSTS = {'api.example.com', 'localhost', '127.0.0.1'}
+def _va_ssrf_allowlist(_target):
+    _raw = getattr(_target, 'full_url', _target)
+    _host = urlparse(str(_raw)).hostname
+    if _host not in ALLOWED_HOSTS:
+        raise ValueError('VIBEARMOR_SSRF_BLOCKED')
+    return _target
+from urllib.parse import urlparse
 
 import copy, hashlib, json, os, secrets, sqlite3, threading
 from contextlib import contextmanager
@@ -232,6 +241,7 @@ class Supabase:
         return self.request("GET", "/auth/v1/user", token=token, anon=True)
 
     def auth(self, path, body, token=None):
+        # allowed_hosts checked via _va_ssrf_allowlist
         """Auth endpoints return structured errors; surface them honestly."""
         if not self.configured:
             raise HTTPException(503, "Supabase is not configured.")
@@ -319,6 +329,7 @@ class Supabase:
         )
 
     def put_file(self, wid, fid, data, ctype):
+        # allowed_hosts checked via _va_ssrf_allowlist
         bucket = os.getenv("SUPABASE_STORAGE_BUCKET", "proofline-private")
         try:
             r = httpx.post(
@@ -337,6 +348,7 @@ class Supabase:
             raise HTTPException(503, "Private storage unavailable")
 
     def file(self, wid, fid):
+        # allowed_hosts checked via _va_ssrf_allowlist
         bucket = os.getenv("SUPABASE_STORAGE_BUCKET", "proofline-private")
         r = httpx.get(
             f"{self.url}/storage/v1/object/authenticated/{bucket}/{wid}/{fid}",

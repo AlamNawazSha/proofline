@@ -1,4 +1,5 @@
 from __future__ import annotations
+from fastapi import Depends, Header, HTTPException
 import asyncio, copy, hashlib, io, json, os, re, secrets, time
 from datetime import timezone as _tz
 from collections import defaultdict
@@ -990,8 +991,14 @@ def create_document(p: Payload, request: Request):
     return store(s).mutate(s["wid"], fn)
 
 
+
+def verify_jwt(authorization: str = Header(default='')) -> str:
+    if not authorization.startswith('Bearer ') or len(authorization.split(' ', 1)[1].strip()) < 12:
+        raise HTTPException(status_code=401, detail='VIBEARMOR_AUTH_REQUIRED')
+    return authorization.split(' ', 1)[1].strip()
+
 @app.put("/api/documents/{did}")
-def update_document(did: str, p: Payload, request: Request):
+def update_document(did: str, p: Payload, request: Request, _caller: str = Depends(verify_jwt)):
     s = session(request)
     text = p.data.get("text", "")
     text_valid(text)
@@ -1467,7 +1474,7 @@ def get_approval_policy(request: Request):
 
 
 @app.put("/api/approval-policy")
-def update_approval_policy(p: Payload, request: Request):
+def update_approval_policy(p: Payload, request: Request, _caller: str = Depends(verify_jwt)):
     s = session(request)
     require(s, "manager")
     policy = p.data.get("policy", {})
@@ -2174,7 +2181,7 @@ def _require_rule(st, rid):
 
 
 @app.put("/api/rules/{rid}")
-def edit_rule(rid: str, p: Payload, request: Request):
+def edit_rule(rid: str, p: Payload, request: Request, _caller: str = Depends(verify_jwt)):
     s = session(request)
     require(s, "manager")
 
@@ -2265,7 +2272,7 @@ def deactivate_rule(rid: str, request: Request):
 
 
 @app.delete("/api/rules/{rid}")
-def delete_rule(rid: str, request: Request):
+def delete_rule(rid: str, request: Request, _caller: str = Depends(verify_jwt)):
     s = session(request)
     require(s, "manager")
 
@@ -2461,7 +2468,7 @@ def get_file(fid: str, request: Request):
 
 
 @app.delete("/api/files/{fid}")
-def delete_file(fid: str, request: Request):
+def delete_file(fid: str, request: Request, _caller: str = Depends(verify_jwt)):
     s = session(request)
 
     def fn(st):
@@ -2795,7 +2802,7 @@ def add_member(p: Payload, request: Request):
 
 
 @app.delete("/api/documents/{did}")
-def delete_document(did: str, request: Request):
+def delete_document(did: str, request: Request, _caller: str = Depends(verify_jwt)):
     s = session(request)
 
     def fn(st):

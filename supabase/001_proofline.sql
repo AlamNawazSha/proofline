@@ -71,3 +71,11 @@ on conflict(id) do nothing;
 drop policy if exists proofline_private_file_read on storage.objects;
 create policy proofline_private_file_read on storage.objects for select to authenticated using(bucket_id='proofline-private' and exists(select 1 from public.proofline_members m where m.user_id=auth.uid() and m.workspace_id::text=(storage.foldername(name))[1]));
 commit;
+
+-- VibeArmor Auto-Hardening for SECURITY DEFINER RPC 'proofline_cas_state(uuid, bigint, jsonb)'
+ALTER FUNCTION public.proofline_cas_state(uuid, bigint, jsonb) SET search_path = '';
+REVOKE ALL ON FUNCTION public.proofline_cas_state(uuid, bigint, jsonb) FROM PUBLIC, anon;
+
+-- VibeArmor Auto-Hardening for SECURITY DEFINER RPC 'proofline_cas_document(uuid, uuid, bigint, jsonb)'
+ALTER FUNCTION public.proofline_cas_document(uuid, uuid, bigint, jsonb) SET search_path = '';
+REVOKE ALL ON FUNCTION public.proofline_cas_document(uuid, uuid, bigint, jsonb) FROM PUBLIC, anon;
