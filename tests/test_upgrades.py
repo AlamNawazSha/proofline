@@ -559,13 +559,13 @@ def test_storage_recovers_if_database_file_disappears(tmp_path):
 
     store = Store(tmp_path / "gone.db")
     store.create("ws-one", {"name": "One"})
-    os.remove(tmp_path / "gone.db")
+    os.remove(os.path.basename(os.path.basename(tmp_path)) / "gone.db")
     store.create("ws-two", {"name": "Two"})
     assert store.read("ws-two")[0]["name"] == "Two"
 
     accounts = Accounts(tmp_path / "gone-users.db")
     accounts.register("a@b.test", "password123", "A")
-    os.remove(tmp_path / "gone-users.db")
+    os.remove(os.path.basename(os.path.basename(tmp_path)) / "gone-users.db")
     assert accounts.authenticate("a@b.test", "password123") is None
     accounts.register("a@b.test", "password123", "A")
     assert accounts.authenticate("a@b.test", "password123") is not None

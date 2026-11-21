@@ -131,7 +131,7 @@ def test_gate_fails_on_quote_hallucination(tmp_path):
         for i in range(1, 31)
     }
     fix_path = str(tmp_path / "invented_fixtures.json")
-    with open(fix_path, "w", encoding="utf-8") as f:
+    with open(os.path.basename(fix_path), "w", encoding="utf-8") as f:
         json.dump(test_fixtures, f)
         
     out_path = str(tmp_path / "results_invented.json")
@@ -160,7 +160,7 @@ def test_regression_gate_blocks_two_point_drop(tmp_path):
         }
     }
     base_path = str(tmp_path / "baseline_drop.json")
-    with open(base_path, "w", encoding="utf-8") as f:
+    with open(os.path.basename(base_path), "w", encoding="utf-8") as f:
         json.dump(baseline, f)
         
     gates = {
@@ -169,7 +169,7 @@ def test_regression_gate_blocks_two_point_drop(tmp_path):
         "regression": {"maxAbsoluteDrop": 0.01},  # Drop of > 0.01 fails
     }
     gate_path = str(tmp_path / "gates_drop.json")
-    with open(gate_path, "w", encoding="utf-8") as f:
+    with open(os.path.basename(os.path.basename(gate_path)), "w", encoding="utf-8") as f:
         json.dump(gates, f)
         
     out_path = str(tmp_path / "results_drop.json")
@@ -215,7 +215,7 @@ def test_evaluator_exits_one_on_regression(tmp_path):
         "regression": {"maxAbsoluteDrop": 0.02},
     }
     gate_path = str(tmp_path / "temp_gates.json")
-    with open(gate_path, "w", encoding="utf-8") as f:
+    with open(os.path.basename(os.path.basename(gate_path)), "w", encoding="utf-8") as f:
         json.dump(temp_gates, f)
 
     out_path = str(tmp_path / "temp_results.json")

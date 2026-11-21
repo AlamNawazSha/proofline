@@ -5,6 +5,7 @@ Enforces strict SSRF protections against internal network scanning.
 """
 
 from __future__ import annotations
+import defusedxml.ElementTree as _safe_et
 import csv
 import io
 import ipaddress
@@ -118,7 +119,7 @@ def extract_docx_text(data: bytes) -> str:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             xml_content = z.read("word/document.xml")
-            tree = ET.fromstring(xml_content)
+            tree = _safe_et.fromstring(xml_content)
             namespaces = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
             
             paragraphs = []

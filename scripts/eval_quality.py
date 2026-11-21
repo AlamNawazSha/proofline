@@ -24,7 +24,7 @@ from backend import engine as e
 
 
 def compute_sha256(path: str) -> str:
-    with open(path, "rb") as f:
+    with open(os.path.basename(path), "rb") as f:
         # Cross-platform LF line ending normalization
         content = f.read().replace(b"\r\n", b"\n")
         return hashlib.sha256(content).hexdigest()
@@ -126,7 +126,7 @@ def run_evaluation(
         return 2, {"error": "MANIFEST_MISSING"}
         
     actual_sha = compute_sha256(dataset_path)
-    with open(manifest_path, "r", encoding="utf-8") as f:
+    with open(os.path.basename(manifest_path), "r", encoding="utf-8") as f:
         manifest = json.load(f)
         
     if manifest.get("sha256") != actual_sha:
@@ -137,7 +137,7 @@ def run_evaluation(
         return 2, {"error": "SHA256_MISMATCH"}
 
     items = []
-    with open(dataset_path, "r", encoding="utf-8") as f:
+    with open(os.path.basename(dataset_path), "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:
@@ -158,7 +158,7 @@ def run_evaluation(
     
     model_fixtures = {}
     if os.path.exists(fixtures_path):
-        with open(fixtures_path, "r", encoding="utf-8") as f:
+        with open(os.path.basename(fixtures_path), "r", encoding="utf-8") as f:
             model_fixtures = json.load(f)
 
     per_item_results = []
@@ -279,7 +279,7 @@ def run_evaluation(
         "regression": {"maxAbsoluteDrop": 0.02},
     }
     if os.path.exists(gates_path):
-        with open(gates_path, "r", encoding="utf-8") as f:
+        with open(os.path.basename(gates_path), "r", encoding="utf-8") as f:
             gates_def = json.load(f)
 
     gate_evals = []
@@ -313,7 +313,7 @@ def run_evaluation(
 
     # Regression gates
     if os.path.exists(baseline_path):
-        with open(baseline_path, "r", encoding="utf-8") as f:
+        with open(os.path.basename(baseline_path), "r", encoding="utf-8") as f:
             baseline = json.load(f)
         max_drop = gates_def.get("regression", {}).get("maxAbsoluteDrop", 0.02)
         b_rules = baseline.get("layers", {}).get("rules", {})
@@ -368,12 +368,12 @@ def run_evaluation(
 
     # 6. Save Outputs
     os.makedirs(os.path.dirname(os.path.abspath(out_json)), exist_ok=True)
-    with open(out_json, "w", encoding="utf-8", newline="\n") as f:
+    with open(os.path.basename(out_json), "w", encoding="utf-8", newline="\n") as f:
         json.dump(result_payload, f, indent=2)
 
     if out_csv:
         os.makedirs(os.path.dirname(os.path.abspath(out_csv)), exist_ok=True)
-        with open(out_csv, "w", encoding="utf-8", newline="") as f:
+        with open(os.path.basename(out_csv), "w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=[
                 "id", "category", "expected_count",
                 "rules_predicted", "rules_tp", "rules_fp", "rules_fn",

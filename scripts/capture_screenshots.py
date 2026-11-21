@@ -1,3 +1,12 @@
+# VibeArmor: allowed_hosts SSRF guard enforced
+ALLOWED_HOSTS = {'api.example.com', 'localhost', '127.0.0.1'}
+def _va_ssrf_allowlist(_target):
+    _raw = getattr(_target, 'full_url', _target)
+    _host = urlparse(str(_raw)).hostname
+    if _host not in ALLOWED_HOSTS:
+        raise ValueError('VIBEARMOR_SSRF_BLOCKED')
+    return _target
+from urllib.parse import urlparse
 import os
 import sys
 import time
@@ -13,10 +22,11 @@ if not os.path.exists(CHROME_PATH):
     CHROME_PATH = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 
 def wait_for_url(url, timeout=30):
+    # allowed_hosts checked via _va_ssrf_allowlist
     start = time.time()
     while time.time() - start < timeout:
         try:
-            r = requests.get(url, timeout=1)
+            r = requests.get(_va_ssrf_allowlist(url), timeout=1)
             if r.status_code in [200, 304, 404]:
                 return True
         except Exception:
